@@ -1,6 +1,6 @@
 Package: bootstrapQTL
 Type: Package
-Title: Correct for Winner's Curse in molQTL studies
+Title: Correct for Winner's Curse in eQTL studies
 Version: 0.1.0
 Authors@R: c(person(given="Qinqin", family="Huang", role=c("aut")),
     person(given="Scott", family="Ritchie", 
@@ -8,7 +8,7 @@ Authors@R: c(person(given="Qinqin", family="Huang", role=c("aut")),
 BugReports: https://github.com/InouyeLab/bootstrapQTL/issues
 Description: Performs bootstrap weighted re-estimation on the 
     output of MatrixEQTL to obtain unbiased effect size 
-    estimates to correct for the "Winner's Curse" in molQTL 
+    estimates to correct for the "Winner's Curse" in eQTL 
     studies. 
 Imports:
   MatrixEQTL,
