@@ -12,7 +12,8 @@ Description: Performs bootstrap weighted re-estimation on the
     studies. 
 Imports:
   MatrixEQTL,
-  foreach
+  foreach,
+  data.table
 Suggests:
   doMC,
   doParallel
