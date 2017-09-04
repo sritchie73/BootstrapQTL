@@ -9,9 +9,10 @@ BugReports: https://github.com/InouyeLab/bootstrapQTL/issues
 Description: Performs bootstrap weighted re-estimation on the 
     output of MatrixEQTL to obtain unbiased effect size 
     estimates to correct for the "Winner's Curse" in eQTL 
-    studies. 
+    studies.
+Depends:
+  MatrixEQTL
 Imports:
-  MatrixEQTL,
   foreach,
   data.table
 Suggests:
