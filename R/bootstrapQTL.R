@@ -1,4 +1,8 @@
+#' Bootstrap eQTL analysis for accurate effect size estimation
 #'
+#' Performs bootstrap analysis on significant eQTL eGenes to obtain
+#' accurate eQTL effect size estimates by correcting for the "Winner's
+#' Curse".
 #'
 #' @param snps see MatrixEQTL
 #' @param gene see MatrixEQTL
@@ -8,15 +12,73 @@
 #'  over
 #' @param ... arguments for MatrixEQTL
 #'
+#' @import foreach
+#' @import data.table
+#' @import MatrixEQTL
+#'
 #' @export
-bootstrapQTL <- function(snps, gene, cvrt=SlicedData$new(),
-                         n_bootstraps=200, n_cores=1, ...) {
+#'
+#' @examples
+#' # Locations for example data from the MatrixEQTL package
+#' base.dir = find.package('MatrixEQTL');
+#' SNP_file_name = paste(base.dir, "/data/SNP.txt", sep="");
+#' snps_location_file_name = paste(base.dir, "/data/snpsloc.txt", sep="");
+#' expression_file_name = paste(base.dir, "/data/GE.txt", sep="");
+#' gene_location_file_name = paste(base.dir, "/data/geneloc.txt", sep="");
+#' covariates_file_name = paste(base.dir, "/data/Covariates.txt", sep="");
+#'
+#' # Load the SNP data
+#' snps = SlicedData$new();
+#' snps$fileDelimiter = "\t";      # the TAB character
+#' snps$fileOmitCharacters = "NA"; # denote missing values;
+#' snps$fileSkipRows = 1;          # one row of column labels
+#' snps$fileSkipColumns = 1;       # one column of row labels
+#' snps$fileSliceSize = 2000;      # read file in slices of 2,000 rows
+#' snps$LoadFile(SNP_file_name);
+#'
+#' # Load the data detailing the position of each SNP
+#' snpspos = read.table(snps_location_file_name, header = TRUE, stringsAsFactors = FALSE);
+#'
+#' # Load the gene expression data
+#' gene = SlicedData$new();
+#' gene$fileDelimiter = "\t";      # the TAB character
+#' gene$fileOmitCharacters = "NA"; # denote missing values;
+#' gene$fileSkipRows = 1;          # one row of column labels
+#' gene$fileSkipColumns = 1;       # one column of row labels
+#' gene$fileSliceSize = 2000;      # read file in slices of 2,000 rows
+#' gene$LoadFile(expression_file_name);
+#'
+#' # Load the data detailing the position of each gene
+#' genepos = read.table(gene_location_file_name, header = TRUE, stringsAsFactors = FALSE);
+#'
+#' # Load the covariates data
+#' cvrt = SlicedData$new();
+#' cvrt$fileDelimiter = "\t";      # the TAB character
+#' cvrt$fileOmitCharacters = "NA"; # denote missing values;
+#' cvrt$fileSkipRows = 1;          # one row of column labels
+#' cvrt$fileSkipColumns = 1;       # one column of row labels
+#' if(length(covariates_file_name)>0) {
+#'   cvrt$LoadFile(covariates_file_name);
+#' }
+#'
+#' # Run the BootstrapEQTL analysis
+#' eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genespos)
+#'
+BootstrapEQTL <- function(snps, gene, cvrt=SlicedData$new(),
+                          snpspos, genespos, n_bootstraps=200, n_cores=1) {
 
   # Set up parallel computing environment
   par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
   on.exit({
     cleanupCluster(par_setup$cluster, par_setup$predef)
   })
+
+  # Check if the user has already loaded data.table: if not, load it and
+  # make sure we return the table as a data.frame
+  has.data.table <- "data.table" %in% names(sessionInfo()$otherPkgs)
+  if (!has.data.table) {
+    pkgReqCheck("data.table") # silently load without tutorial message
+  }
 
   # Run Matrix eQTL to determine significant eGenes and get nominal
   # estimates for their effect sizes
@@ -25,15 +87,16 @@ bootstrapQTL <- function(snps, gene, cvrt=SlicedData$new(),
     gene = gene,
     cvrt = cvrt,
     pvOutputThreshold = 0, # we don't need the Trans eQTL pvalues
-    useModel = useModel,
-    errorCovariance = errorCovariance,
+    errorCovariance = numeric(),
     pvOutputThreshold.cis = 1,
     snpspos = snpspos,
     genepos = genepos,
-    cisDist = cisDist,
+    cisDist = 1e6,
     output_file_name=NULL,
     output_file_name.cis=NULL,
-    noFDRsaveMemory=FALSE
+    noFDRsaveMemory=FALSE,
+    useModel=modelLINEAR,
+    verbose=FALSE
   );
 
   # Apply hierarchical multiple testing correction
@@ -74,12 +137,12 @@ bootstrapQTL <- function(snps, gene, cvrt=SlicedData$new(),
         gene = gene_detection,
         cvrt = cvrt_detection,
         pvOutputThreshold = 0, # we don't need the Trans eQTL pvalues
-        useModel = useModel,
-        errorCovariance = errorCovariance,
+        useModel = modelLINEAR,
+        errorCovariance = numeric(),
         pvOutputThreshold.cis = 1,
         snpspos = snpspos,
         genepos = genepos,
-        cisDist = cisDist,
+        cisDist = 1e6,
         output_file_name=NULL,
         output_file_name.cis=NULL,
         noFDRsaveMemory=FALSE,
@@ -140,12 +203,12 @@ bootstrapQTL <- function(snps, gene, cvrt=SlicedData$new(),
         gene = gene_estimation,
         cvrt = cvrt_estimation,
         pvOutputThreshold = 0, # we don't need the Trans eQTL pvalues
-        useModel = useModel,
-        errorCovariance = errorCovariance,
+        useModel = modelLINEAR,
+        errorCovariance = numeric(),
         pvOutputThreshold.cis = 1,
         snpspos = snpspos,
         genepos = genepos,
-        cisDist = cisDist,
+        cisDist = 1e6,
         output_file_name=NULL,
         output_file_name.cis=NULL,
         noFDRsaveMemory=FALSE,
@@ -209,5 +272,13 @@ bootstrapQTL <- function(snps, gene, cvrt=SlicedData$new(),
   top_snp_props <- top_snp_props[, .SD[which.max(prop_top_eSNP)], by=gene]
   eGenes <- merge(eGenes, top_snp_props[, list(gene, prop_top_eSNP)], by="gene", all.x=TRUE)
 
-  return(eGenes[order(abs(statistic), decreasing=TRUE)][order(corrected_pval)])
+  # Sort eGenes by significance
+  eGenes <- eGenes[order(abs(statistic), decreasing=TRUE)][order(corrected_pval)]
+
+  # If the user has not loaded data.table themselves cast back to a
+  # data frame to avoid confusion
+  if (!has.data.table) {
+    eGenes <- as.data.frame(eGenes)
+  }
+  return(eGenes)
 }
