@@ -1,4 +1,4 @@
-Package: bootstrapQTL
+Package: BootstrapEQTL
 Type: Package
 Title: Correct for Winner's Curse in eQTL studies
 Version: 0.1.0
