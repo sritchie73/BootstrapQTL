@@ -27,7 +27,7 @@ setupParallel <- function(nCores, verbose, reporterCore) {
       }
     } else {
       nCores <- 1
-      if (verbose) cat("Unable to find 'parallel' package, running on 1 core")
+      if (verbose) cat("Unable to find 'parallel' package, running on 1 core.\n")
     }
   }
   if (!is.numeric(nCores) || length(nCores) > 1 || nCores < 1)
@@ -40,11 +40,11 @@ setupParallel <- function(nCores, verbose, reporterCore) {
   # First, check whether the user has already set up a parallel backend. In this
   # case, we can ignore the `nCores` argument.
   if (foreach::getDoParWorkers() > 1) {
-    if (verbose) cat("Ignoring 'nCores': parallel backend detected.")
+    if (verbose) cat("Ignoring 'nCores': parallel backend detected.\n")
     if (reporterCore) {
       if (verbose) {
         cat("Reserving 1 core for progress reporting.", foreach::getDoParWorkers() - 1,
-            "cores will be used for computation")
+            "cores will be used for computation.\n")
       }
     }
     nCores <- foreach::getDoParWorkers()
@@ -64,7 +64,7 @@ setupParallel <- function(nCores, verbose, reporterCore) {
       cl <- parallel::makeCluster(nCores, type="PSOCK")
       doParallel::registerDoParallel(cl)
 
-      if (verbose) cat("Running on", workerCores, "cores.")
+      if (verbose) cat("Running on", workerCores, "cores.\n")
       if (workerCores > parallel::detectCores()) {
         stop(
           "Requested number of threads (", workerCores, ") is higher than the ",
@@ -77,7 +77,7 @@ setupParallel <- function(nCores, verbose, reporterCore) {
       # We want to immediately print a warning for the user, not at the end
       # once the analysis has finished.
       cat("running on 1 core. Please install the 'doParallel' package",
-          "to enable parallel computation", file=stderr())
+          "to enable parallel computation.\n", file=stderr())
       warning("Package required for parallel computation not installed")
     }
   } else if (.Platform$OS.type == "unix" && nCores > 1) {
@@ -90,7 +90,7 @@ setupParallel <- function(nCores, verbose, reporterCore) {
         nCores <- nCores + 1
       }
       doMC::registerDoMC(nCores)
-      if(verbose) cat("Running on", workerCores, "cores.")
+      if(verbose) cat("Running on", workerCores, "cores.\n")
       if ((nCores - 1) > parallel::detectCores()) {
         stop(
           "Requested number of threads (", workerCores, ") is higher than the ",
@@ -103,11 +103,11 @@ setupParallel <- function(nCores, verbose, reporterCore) {
       # We want to immediately print a warning for the user, not at the end
       # once the analysis has finished.
       cat("Warning: running on 1 core. Please install the 'doMC' package",
-          "to enable parallel computation", file=stderr())
+          "to enable parallel computation.\n", file=stderr())
       warning("Package required for parallel computation not installed")
     }
   } else {
-    if(verbose) cat("Running on 1 cores.")
+    if(verbose) cat("Running on 1 cores.\n")
   }
 
   # Suppress annoying foreach warning generated when using %dopar% and running
