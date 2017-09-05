@@ -128,28 +128,29 @@
 #' @param ... arguments for MatrixEQTL
 #'
 #' @return
-#'  A data.frame (or data.table) containing the results for each eGene:
+#'  A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
+#'  user has the library loaded) containing the results for each eGene:
 #'  \describe{
-#'    \item{gene}{The eGene.}
-#'    \item{top_snp}{The SNP with the smallest p-value for the eGene in the MatrixEQTL analysis.
+#'    \item{\code{'gene':}}{The eGene.}
+#'    \item{\code{'top_snp':}}{The SNP with the smallest p-value for the eGene in the MatrixEQTL analysis.
 #'      Multiple SNPs separated by a "/" indicate multiple SNPs in perfect LD with identical
 #'      test statistics, effect sizes, and p-values.}
-#'    \item{statistic}{The test statistic for the \code{top_snp}-\code{gene} pair.}
-#'    \item{nominal_beta}{The eQTL effect size for the \code{top_snp}-\code{gene} pair in the
+#'    \item{\code{'statistic':}}{The test statistic for the \code{top_snp}-\code{gene} pair.}
+#'    \item{\code{'nominal_beta':}}{The eQTL effect size for the \code{top_snp}-\code{gene} pair in the
 #'      MatrixEQTL analysis.}
-#'    \item{nominal_pval}{The p-value for the \code{top_snp}-\code{gene} pair from the MatrixEQTL
+#'    \item{\code{'nominal_pval':}}{The p-value for the \code{top_snp}-\code{gene} pair from the MatrixEQTL
 #'      analysis prior to multiple testing correction.}
-#'    \item{corrected_pval}{The hierarchical multiple-testing adjusted p-value for the
+#'    \item{\code{'corrected_pval':}}{The hierarchical multiple-testing adjusted p-value for the
 #'    \code{top_snp}-\code{gene} pair}
-#'    \item{winners_curse}{The amount of effect size overestimation determined by the
+#'    \item{\code{'winners_curse':}}{The amount of effect size overestimation determined by the
 #'      bootstrap analysis (See Details).}
-#'    \item{corrected_beta}{The eGene effect size after adjustment for the \code{winners_curse}.}
-#'    \item{correction_boots}{The number of bootstraps that contributed to the estimation of
+#'    \item{\code{'corrected_beta':}}{The eGene effect size after adjustment for the \code{winners_curse}.}
+#'    \item{\code{'correction_boots':}}{The number of bootstraps that contributed to the estimation of
 #'      the \code{winners_curse}, \emph{i.e.} the number of bootstraps in which the
 #'      \code{top_snp}-\code{gene} pair was significant (see details)}
-#'    \item{best_boot_eSNP}{The SNP or SNPs that were most frequently the top eSNP in
+#'    \item{\code{'best_boot_eSNP':}}{The SNP or SNPs that were most frequently the top eSNP in
 #'      the bootstrap procedure (see details).}
-#'    \item{prop_top_eSNP}{The proportion of bootstraps in which the \code{'best_boot_eSNP'}
+#'    \item{\code{'prop_top_eSNP':}}{The proportion of bootstraps in which the \code{'best_boot_eSNP'}
 #'      was the top eSNP (see details).}
 #'  }
 #'
