@@ -4,27 +4,170 @@
 \alias{BootstrapEQTL}
 \title{Bootstrap eQTL analysis for accurate effect size estimation}
 \usage{
-BootstrapEQTL(snps, gene, cvrt = SlicedData$new(), snpspos, genespos,
-  n_bootstraps = 200, n_cores = 1)
+BootstrapEQTL(snps, gene, cvrt = SlicedData$new(), snpspos, genepos,
+  cisDist = 1e+06, n_bootstraps = 200, n_cores = 1)
 }
 \arguments{
-\item{snps}{see MatrixEQTL}
+\item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
+information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 
-\item{gene}{see MatrixEQTL}
+\item{gene}{\code{\link[MatrixEQTL]{SlicedData}} object containing gene expression
+information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 
-\item{cvrt}{see MatrixEQTL}
+\item{cvrt}{\code{\link[MatrixEQTL]{SlicedData}} object containing covariate
+information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+Argument can be ignored in the case of no covariates.}
 
-\item{n_bootstraps}{number of bootstraps to run}
+\item{snpspos}{\code{data.frame} object with information about SNP locations.
+Used in conjunction with \code{'genespos'} and \code{'cisDist'} to
+determine SNPs in \emph{cis} of each gene. Must have three columns: \enumerate{
+  \item 'snpid' describing the name of the SNP and corresponding to rows in
+  the 'snps' matrix.
+  \item 'chr' describing the chromosome for each SNP.
+  \item 'pos' describing the position of the SNP on the chromosome.
+}}
+
+\item{cisDist}{\code{numeric}. Argument for \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+SNP-gene pairs within this distance on the same chromosome are
+considered local (in-\emph{cis}). Distance is measured to the
+nearest end of the gene.}
+
+\item{n_bootstraps}{number of bootstraps to run.}
 
 \item{n_cores}{number of cores to parallise the bootstrap procedure
-over}
+over.}
+
+\item{genespos}{\code{data.frame} object with information about transcript locations.
+Used in conjunction with \code{'snpspos'} and \code{'cisDist'} to
+determine SNPs in \emph{cis} of each gene. Must have four columns: \enumerate{
+  \item 'geneid' describing the name of the gene and corresponding to rows in
+  the 'gene' matrix.
+  \item 'chr' describing the chromosome for each SNP.
+  \item 'left' describing the start position of the transcript.
+  \item 'right' describing the end position of the transcript.
+}}
 
 \item{...}{arguments for MatrixEQTL}
 }
+\value{
+A data.frame (or data.table) containing the results for each eGene:
+ \describe{
+   \item{gene}{The eGene.}
+   \item{top_snp}{The SNP with the smallest p-value for the eGene in the MatrixEQTL analysis.
+     Multiple SNPs separated by a "/" indicate multiple SNPs in perfect LD with identical
+     test statistics, effect sizes, and p-values.}
+   \item{statistic}{The test statistic for the \code{top_snp}-\code{gene} pair.}
+   \item{nominal_beta}{The eQTL effect size for the \code{top_snp}-\code{gene} pair in the
+     MatrixEQTL analysis.}
+   \item{nominal_pval}{The p-value for the \code{top_snp}-\code{gene} pair from the MatrixEQTL
+     analysis prior to multiple testing correction.}
+   \item{corrected_pval}{The hierarchical multiple-testing adjusted p-value for the
+   \code{top_snp}-\code{gene} pair}
+   \item{winners_curse}{The amount of effect size overestimation determined by the
+     bootstrap analysis (See Details).}
+   \item{corrected_beta}{The eGene effect size after adjustment for the \code{winners_curse}.}
+   \item{correction_boots}{The number of bootstraps that contributed to the estimation of
+     the \code{winners_curse}, \emph{i.e.} the number of bootstraps in which the
+     \code{top_snp}-\code{gene} pair was significant (see details)}
+   \item{best_boot_eSNP}{The SNP or SNPs that were most frequently the top eSNP in
+     the bootstrap procedure (see details).}
+   \item{prop_top_eSNP}{The proportion of bootstraps in which the \code{'best_boot_eSNP'}
+     was the top eSNP (see details).}
+ }
+}
 \description{
-Performs bootstrap analysis on significant eQTL eGenes to obtain
-accurate eQTL effect size estimates by correcting for the "Winner's
+Performs a cis-eQTL analysis using MatrixEQTL with an additional
+bootstrap analysis on significant eQTL eGenes to obtain accurate
+eQTL effect size estimates by correcting for the "Winner's
 Curse".
+}
+\details{
+\code{BootstrapEQTL} extends the \code{\link{MatrixEQTL}} package by
+ performing hierarchical multiple testing correction that controls
+ the eGene false discovery rate at 5\% and provides accurate eQTL
+ effect sizes for significant eGenes by performing a bootstrap
+ procedure that corrects for the overestimation of effect sizes
+ ("The Winner's Curse effect").
+
+ \subsection{EGene detection:}{
+ Detection of significant eGenes is performed using a hieararchical
+ multiple testing correction procedure. At each gene, local multiple
+ testing adjustment is performed through Bonferroni adjustment
+ correcting for the number of \emph{cis}-SNPs tested. Global multiple
+ testing adjustment is subsequently performed by taking the minimum
+ Bonferroni adjusted p-value at each gene, then performing
+ Benjamini-Hochberg FDR adjustment across all genes.This procedure
+ best controls the eGene false discovery rate without
+ sacrificing sensitivity (see citation).
+ }
+ \subsection{Winner's curse adjustment:}{
+ EQTL effect sizes of significant eGenes are typically overestimated
+ when compared to replication datasets due to the selection of the
+ best \emph{cis}-SNP at each gene. \code{BootstrapEQTL} removes this
+ overestimation by performing a bootstrap procedure after significant
+ eGene discovery by \code{\link{MatrixEQTL}}.
+
+ The bootstrap procedure provides an estimate of the effect size
+ overestimation ("Winner's Curse") by partitioning the discovery
+ dataset into two groups: an eQTL detection group, and an effect size
+ estimation group. The eQTL detection group is determined by
+ bootstrapping (sampling with replacement) the dataset samples, with
+ the remaining samples (those not selected via the sampling with
+ replacement) composing the eQTL estimation group.
+ \code{\link{MatrixEQTL}} is then performed in the detection group in
+ the same way as described in the "EGene discovery:" section above to
+ determine whether significant eGenes remain significant in the
+ bootstrapped detection group when considering the same SNP-gene
+ pairs detected in the initial eGene discovery analysis. If the
+ significant eGenes remain significant in the bootstrapped detection
+ group, then the effect size of the SNP-Gene pair is calculated in
+ the left-out estimation group. The difference between the effect size
+ in the bootstrap detection group and the left-out estimation group
+ is then used as an estimate of the "Winner's Curse" effect for that
+ SNP-gene pair. This procedure is repeated several hundred times (see
+ the \code{'n_bootstraps'} argument) to obtain a robust "Winner's
+ Curse" effect for each SNP-Gene pair by averaging over significant
+ bootstraps. This is reported in the \code{winners_curse} column of
+ the returned table. The eQTL effect size corrected for the "Winner's
+ Curse" is reported in the \code{corrected_beta} column.
+
+ Note that SNP-gene pairs may not remain significant in all
+ bootstraps, so the effective number of bootstraps used obtain the
+ "Winner's Curse" estimate will typically be lower than the number of
+ bootstraps specified in \code{'n_bootstraps'}. The number of
+ bootstraps that were significant for each eGene is reported in the
+ \code{'correction_boots'} column of the returned table.
+
+ In addition to correcting for the Winner's Curse, the bootstrap
+ procedure also collects statistics about which SNP(s) are the top
+ SNP for each tested eGene in the bootstrapped detection group. This
+ may differ from the top SNP from the initial eGene detection
+ analysis in any given bootstrap. The \code{'best_boot_eSNP'} column
+ reports the SNP that was the top SNP most frequently across the
+ bootstrap procedure. There is some evidence from simulation studies
+ that this is more likely to be the causal SNP than the
+ \code{'top_snp'} from the eGene detection analysis (see citation),
+ although the \code{'top_snp'} and \code{'best_boot_eSNP'} are
+ typically the same. Multiple SNPs may be reported in the
+ \code{'best_boot_eSNP'} column. SNPs separated by a "/" indicate
+ multiple SNPs in perfect linkage disequilbrium (LD), \emph{i.e.}
+ with identical test statistics/effect sizes/p-values in all
+ bootstraps, while SNPs separated by a ";" indicate multiple SNPs (or
+ SNP groups in perfect LD) that were the top SNP(s) with equal
+ frequency across the bootstrap procedure (\emph{e.g.}
+ "SNP1;SNP2/SNP3" could indicate SNP1 was the top SNP in 50\% of
+ significant bootstraps and SNP2 and SNP3 are in perfect LD and were
+ was the top SNP in the other 50\% of significant bootstraps). The
+ \code{'prop_top_eSNP'} column reports the proportion of significant
+ bootstraps for which the \code{'best_boot_eSNP'} was the top SNP.
+ A low \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate
+ complex LD structure around the top eSNP or multiple causal eSNPs.
+ Note that here the number of significant bootstraps may be higher
+ than that reported in \code{'correction_boots'} as an eGene may be
+ significant when performing global FDR correction across the top
+ bootstrap detection group SNP but not when performing global FDR
+ correction on the top SNP from the origina eGene detection analysis.
+ }
 }
 \examples{
 # Locations for example data from the MatrixEQTL package
@@ -70,6 +213,6 @@ if(length(covariates_file_name)>0) {
 }
 
 # Run the BootstrapEQTL analysis
-eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genespos)
+eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos)
 
 }
