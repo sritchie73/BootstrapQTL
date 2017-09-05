@@ -104,7 +104,7 @@ BootstrapEQTL <- function(snps, gene, cvrt=SlicedData$new(),
   cis_assocs[, corrected_pval := p.adjust(pvalue, method="bonferroni"), by=gene] # local SNP correction
   cis_assocs <- cis_assocs[order(abs(statistic), decreasing=TRUE)] # If multiple SNPs have the smallest pvalue, make sure the one with the biggest T-statistic is selected
   eGenes <- cis_assocs[, .SD[which.min(corrected_pval)], by="gene"] # take row with best p-value per gene
-  eGenes[, corrected_pval := p.adjust(pvalue, method="BH")] # global gene correction
+  eGenes[, corrected_pval := p.adjust(corrected_pval, method="BH")] # global gene correction
   eGenes <- eGenes[,list(gene, top_snp=snps, statistic, nominal_beta=beta,
                          nominal_pval=pvalue, corrected_pval)]
 
