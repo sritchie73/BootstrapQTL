@@ -219,6 +219,16 @@ BootstrapEQTL <- function(
     stop("'cvrt' column names must be in same order as 'snps' and 'genes'")
   }
 
+  # Check for special characters in SNP ids
+  if (any(grepl("/", rownames(snps)) || any(grepl(";", rownames(snps))))) {
+    stop('special characters ";" and "/" not allowed in SNP identifiers')
+  }
+  if (any(grepl("/", snpspos[,1]) || any(grepl(";", snpspos[,1])))) {
+    # I.e. the user will rename the problem variants in 'snps' but
+    # forget to also fix 'snpspos'.
+    stop('special characters ";" and "/" found in \'snpspos\' SNP identifiers')
+  }
+
   # Set up parallel computing environment
   par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
   on.exit({
