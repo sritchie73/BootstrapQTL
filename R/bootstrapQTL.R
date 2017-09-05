@@ -77,7 +77,7 @@ BootstrapEQTL <- function(snps, gene, cvrt=SlicedData$new(),
   # make sure we return the table as a data.frame
   has.data.table <- "data.table" %in% names(sessionInfo()$otherPkgs)
   if (!has.data.table) {
-    pkgReqCheck("data.table") # silently load without tutorial message
+    suppressPackageStartupMessages(require("data.table")) # silently load without tutorial message
   }
 
   # Run Matrix eQTL to determine significant eGenes and get nominal
