@@ -92,6 +92,18 @@
 #'  bootstrap detection group SNP but not when performing global FDR
 #'  correction on the top SNP from the origina eGene detection analysis.
 #'  }
+#'  \subsection{Warning messages:}{
+#'  It is possible for bootstrap analyses to fail due to the reduced
+#'  sample sizes of the bootstrap detection and bootstrap estimation
+#'  groups. For example, the bootstrap resampling may lead to an
+#'  estimation group in which all individuals are homozygous for the
+#'  eQTL SNP or are all the same age or sex. This causes the eQTL
+#'  analysis to crash since the linear models cannot be fit. These
+#'  errors are collated at the end of the bootstrap procedure, grouped
+#'  together, and reported as a series of warnings detailing the number
+#'  of bootstraps in which the error occurred as well as whether they
+#'  occurred in the detection or estimation groups.
+#'  }
 #'
 #' @param snps \code{\link[MatrixEQTL]{SlicedData}} object containing genotype
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
@@ -401,7 +413,6 @@ BootstrapEQTL <- function(
       # filter to significant eGenes from original analysis
       detection_top_SNPs <- detection_top_SNPs[gene %in% eGenes[corrected_pval < 0.05, gene]]
 
-
       # Combine both the eQTL SNPs and top bootstrap SNPs tables for
       # post-bootstrap processing
       detection_eQTL_SNPs[, snp_type := "eQTL"]
@@ -421,81 +432,95 @@ BootstrapEQTL <- function(
         return(NULL)
       }
 
-      # Run MatrixEQTL in the estimation group. We only care about the
-      # significant SNP-Gene pairs from the detection group, so we can
-      # save computation time by filtering their respective matrices.
-      # Note: where multiple significant genes or snps are located within
-      # the same cis window the filtering will not be perfect.
-      sig_boot_genes <- sig_boot_assocs[snp_type == "eQTL", gene]
-      sig_boot_snps <- sig_boot_assocs[snp_type == "eQTL", snps]
+      tryCatch({
+        # Run MatrixEQTL in the estimation group. We only care about the
+        # significant SNP-Gene pairs from the detection group, so we can
+        # save computation time by filtering their respective matrices.
+        # Note: where multiple significant genes or snps are located within
+        # the same cis window the filtering will not be perfect.
+        sig_boot_genes <- sig_boot_assocs[snp_type == "eQTL", gene]
+        sig_boot_snps <- sig_boot_assocs[snp_type == "eQTL", snps]
 
-      gene_estimation <- gene$Clone()
-      gene_estimation$RowReorder(which(gene_estimation$GetAllRowNames() %in% sig_boot_genes))
-      gene_estimation$ColumnSubsample(id_estimation)
-      snps_estimation <- snps$Clone()
-      snps_estimation$RowReorder(which(snps_estimation$GetAllRowNames() %in% sig_boot_snps))
-      snps_estimation$ColumnSubsample(id_estimation)
-      cvrt_estimation <- cvrt$Clone()
-      cvrt_estimation$ColumnSubsample(id_estimation)
+        gene_estimation <- gene$Clone()
+        gene_estimation$RowReorder(which(gene_estimation$GetAllRowNames() %in% sig_boot_genes))
+        gene_estimation$ColumnSubsample(id_estimation)
+        snps_estimation <- snps$Clone()
+        snps_estimation$RowReorder(which(snps_estimation$GetAllRowNames() %in% sig_boot_snps))
+        snps_estimation$ColumnSubsample(id_estimation)
+        cvrt_estimation <- cvrt$Clone()
+        cvrt_estimation$ColumnSubsample(id_estimation)
 
-      # File to save estimation group associations
-      if (is.null(bootstrap_file_directory)) {
-        estimation_file <- NULL
-      } else {
-        estimation_file <- file.path(bootstrap_file_directory, paste0("detection_", id_boot, ".txt"))
-      }
+        # File to save estimation group associations
+        if (is.null(bootstrap_file_directory)) {
+          estimation_file <- NULL
+        } else {
+          estimation_file <- file.path(bootstrap_file_directory, paste0("detection_", id_boot, ".txt"))
+        }
 
-      eQTL_estimation <- Matrix_eQTL_main(
-        snps = snps_estimation,
-        gene = gene_estimation,
-        cvrt = cvrt_estimation,
-        pvOutputThreshold = 0, # we don't need the Trans eQTL pvalues
-        useModel = modelLINEAR,
-        errorCovariance = numeric(),
-        pvOutputThreshold.cis = 1,
-        snpspos = snpspos,
-        genepos = genepos,
-        cisDist = 1e6,
-        output_file_name=NULL,
-        output_file_name.cis=estimation_file,
-        noFDRsaveMemory=ifelse(is.null(estimation_file), FALSE, TRUE),
-        verbose=FALSE
-      )
+        eQTL_estimation <- Matrix_eQTL_main(
+          snps = snps_estimation,
+          gene = gene_estimation,
+          cvrt = cvrt_estimation,
+          pvOutputThreshold = 0, # we don't need the Trans eQTL pvalues
+          useModel = modelLINEAR,
+          errorCovariance = numeric(),
+          pvOutputThreshold.cis = 1,
+          snpspos = snpspos,
+          genepos = genepos,
+          cisDist = 1e6,
+          output_file_name=NULL,
+          output_file_name.cis=estimation_file,
+          noFDRsaveMemory=ifelse(is.null(estimation_file), FALSE, TRUE),
+          verbose=FALSE
+        )
 
-      # Add the estimation beta to the significant bootstrap association
-      # table
-      if (is.null(estimation_file)) {
-        estimation_cis_assocs <- as.data.table(eQTL_estimation$cis$eqtls)
-      } else {
-        estimation_cis_assocs <- fread(estimation_file)
-        setnames(estimation_cis_assocs, c("SNP", "t-stat", "p-value"), c("snps", "statistic", "pvalue"))
-      }
-      estimation_assocs <- estimation_cis_assocs[, list(gene, snps, estimation_beta=beta)]
-      setkey(sig_boot_assocs, gene, snps)
-      setkey(estimation_assocs, gene, snps)
-      sig_boot_assocs[snp_type == "eQTL", estimation_beta := estimation_assocs[list(gene, snps), estimation_beta]]
+        # Add the estimation beta to the significant bootstrap association
+        # table
+        if (is.null(estimation_file)) {
+          estimation_cis_assocs <- as.data.table(eQTL_estimation$cis$eqtls)
+        } else {
+          estimation_cis_assocs <- fread(estimation_file)
+          setnames(estimation_cis_assocs, c("SNP", "t-stat", "p-value"), c("snps", "statistic", "pvalue"))
+        }
+        estimation_assocs <- estimation_cis_assocs[, list(gene, snps, estimation_beta=beta)]
+        setkey(sig_boot_assocs, gene, snps)
+        setkey(estimation_assocs, gene, snps)
+        sig_boot_assocs[snp_type == "eQTL", estimation_beta := estimation_assocs[list(gene, snps), estimation_beta]]
 
-      # Other housekeeping info
-      sig_boot_assocs[,bootstrap := id_boot]
-      sig_boot_assocs[,error := NA_character_]
+        # Other housekeeping info
+        sig_boot_assocs[,bootstrap := id_boot]
+        sig_boot_assocs[,error := NA_character_]
+        sig_boot_assocs[, error_type := NA_character_]
 
-      return(sig_boot_assocs)
+        return(sig_boot_assocs)
+      }, error=function(e) {
+        sig_boot_assocs <- sig_boot_assocs[snp_type == "top"]
+        sig_boot_assocs[, estimation_beta := NA_real_]
+        sig_boot_assocs[, bootstrap := id_boot]
+        sig_boot_assocs[, error := NA_character_]
+        sig_boot_assocs[, error_type := NA_character_]
+
+        sig_boot_assocs <- rbind(sig_boot_assocs,
+           data.table(gene=NA, snps=NA, snp_type=NA, detection_beta=NA,
+                      estimation_beta=NA, bootstrap=id_boot, error=gsub("\n", " ", e$message),
+                      error_type="estimation"))
+        return(sig_boot_assocs)
+      })
     }, error=function(e) {
       return(data.table(gene=NA, snps=NA, snp_type=NA, detection_beta=NA,
-                        estimation_beta=NA, bootstrap=id_boot,
-                        error=gsub("\n", " ", e$message)))
+                        estimation_beta=NA, bootstrap=id_boot, error=gsub("\n", " ", e$message),
+                        error_type="detection"))
     })
   }
 
   # Report failed bootstraps if any
   if (boot_eGenes[,sum(!is.na(error))] > 0) {
-    errors <- boot_eGenes[!is.na(error), .N, by=error]
+    errors <- boot_eGenes[!is.na(error), .N, by=list(error, error_type)]
     for (ii in errors[,.I]) {
       warning(errors[ii, N], "/", n_bootstraps, " bootstraps failed with",
-              " error '", errors[ii, error], "' in the bootstrap",
-              " estimation group.")
+              " error '", errors[ii, error], "' in the bootstrap ",
+              errors[ii, error_type], " group.")
     }
-    n_bootstraps <- n_bootstraps - boot_eGenes[,sum(!is.na(error))]
   }
   boot_eGenes <- boot_eGenes[is.na(error)]
 
