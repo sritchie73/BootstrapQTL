@@ -17,7 +17,8 @@ Imports:
   data.table
 Suggests:
   doMC,
-  doParallel
+  doParallel,
+  testthat
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
