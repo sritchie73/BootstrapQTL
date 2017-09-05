@@ -117,15 +117,30 @@
 #'     \item 'left' describing the start position of the transcript.
 #'     \item 'right' describing the end position of the transcript.
 #'   }
-#' @param cisDist \code{numeric}. Argument for \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
-#'    SNP-gene pairs within this distance on the same chromosome are
-#'    considered local (in-\emph{cis}). Distance is measured to the
-#'    nearest end of the gene.
 #'
 #' @param n_bootstraps number of bootstraps to run.
 #' @param n_cores number of cores to parallise the bootstrap procedure
 #'  over.
-#' @param ... arguments for MatrixEQTL
+#' @param errorCovariance \code{numeric}. The error covariance matrix to
+#'  use in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+#' @param eGene_detection_file_name \code{character}, \code{connection} or \code{NULL}.
+#'  File to save local \emph{cis} associations to in the eGene detection analysis. Corresponds
+#'  to the \code{output_file_name.cis} argument in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+#'  If a file with this name exists it is overwritten, if \code{NULL} output is not saved
+#'  to file.
+#' @param bootstrap_file_directory \code{character} or \code{NULL}. If not \code{NULL},
+#'  files will be saved in this directory storing local \emph{cis} associations for
+#'  the bootstrap eGene detection group (detection_bootstrapnumber.txt) and local
+#'  \emph{cis} associations the bootstrap left-out eGene effect size estimation
+#'  group (estimation_bootstrapnumber.txt). Estimation group files will only be saved
+#'  where signficant eGenes are also significant in the bootstrap detection group
+#'  (see Details). Corresponds to the \code{output_file_name.cis} argument in the
+#'  respective calls to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}. Files in this
+#'  directory will be overwritten if they already exist.
+#'
+#' Directory to save
+#'  local \emph{cis} associations for the bootstrap eGene detection and bootstrap
+#'  left-out eGene effect size estimation groups.
 #'
 #' @return
 #'  A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -207,8 +222,9 @@
 #' eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos)
 #'
 BootstrapEQTL <- function(
-  snps, gene, cvrt=SlicedData$new(), snpspos, genepos, cisDist=1000000,
-  n_bootstraps=200, n_cores=1
+  snps, gene, cvrt=SlicedData$new(), snpspos, genepos,
+  n_bootstraps=200, n_cores=1, eGene_detection_file_name=NULL,
+  bootstrap_file_directory=NULL
 ) {
 
   # Check column names are in same order
@@ -227,6 +243,19 @@ BootstrapEQTL <- function(
     # I.e. the user will rename the problem variants in 'snps' but
     # forget to also fix 'snpspos'.
     stop('special characters ";" and "/" found in \'snpspos\' SNP identifiers')
+  }
+
+  # Force cis-eQTL analysis
+  if (missing(snpspos) || is.na(snpspos) || is.null(snpspos)) {
+    stop("'snpspos' must be provided")
+  }
+  if (missing(genepos) || is.na(genepos) || is.null(genepos)) {
+    stop("'genepos' must be provided")
+  }
+
+  # Create bootstrap file directory
+  if (!is.null(bootstrap_file_directory)) {
+    dir.create(bootstrap_file_directory, showWarnings=FALSE)
   }
 
   # Set up parallel computing environment
@@ -253,16 +282,21 @@ BootstrapEQTL <- function(
     pvOutputThreshold.cis = 1,
     snpspos = snpspos,
     genepos = genepos,
-    cisDist = cisDist,
+    cisDist = 1e6,
     output_file_name=NULL,
-    output_file_name.cis=NULL,
-    noFDRsaveMemory=FALSE,
+    output_file_name.cis=eGene_detection_file_name,
+    noFDRsaveMemory=ifelse(is.null(eGene_detection_file_name), FALSE, TRUE),
     useModel=modelLINEAR,
     verbose=FALSE
   );
 
   # Apply hierarchical multiple testing correction
-  cis_assocs <- as.data.table(eQTLs$cis$eqtls) # Note need to read in file if output_file_name.cis != NULL
+  if (is.null(eGene_detection_file_name)) {
+    cis_assocs <- as.data.table(eQTLs$cis$eqtls)
+  } else {
+    cis_assocs <- fread(eGene_detection_file_name)
+    setnames(cis_assocs, c("SNP", "t-stat", "p-value"), c("snps", "statistic", "pvalue"))
+  }
   cis_assocs[, corrected_pval := p.adjust(pvalue, method="bonferroni"), by=gene] # local SNP correction
   cis_assocs <- cis_assocs[order(abs(statistic), decreasing=TRUE)] # If multiple SNPs have the smallest pvalue, make sure the one with the biggest T-statistic is selected
   eGenes <- cis_assocs[, .SD[which.min(corrected_pval)], by="gene"] # take row with best p-value per gene
@@ -303,6 +337,13 @@ BootstrapEQTL <- function(
       cvrt_detection <- cvrt$Clone()
       cvrt_detection$ColumnSubsample(id_detection)
 
+      # File to save detection group cis associations
+      if (is.null(bootstrap_file_directory)) {
+        detection_file <- NULL
+      } else {
+        detection_file <- file.path(bootstrap_file_directory, paste0("detection_", id_boot, ".txt"))
+      }
+
       # Run MatrixEQTL on the detection group
       # Revisit to remove unneccesary parameters
       eQTL_detection <- Matrix_eQTL_main(
@@ -315,16 +356,21 @@ BootstrapEQTL <- function(
         pvOutputThreshold.cis = 1,
         snpspos = snpspos,
         genepos = genepos,
-        cisDist = cisDist,
+        cisDist = 1e6,
         output_file_name=NULL,
-        output_file_name.cis=NULL,
-        noFDRsaveMemory=FALSE,
+        output_file_name.cis=detection_file,
+        noFDRsaveMemory=ifelse(is.null(detection_file), FALSE, TRUE),
         verbose=FALSE
       )
 
       # Do hierarchical multiple testing correction to determine
       # significant eGenes
-      detection_cis_assocs <- as.data.table(eQTL_detection$cis$eqtls)
+      if (is.null(detection_file)) {
+        detection_cis_assocs <- as.data.table(eQTL_detection$cis$eqtls)
+      } else {
+        detection_cis_assocs <- fread(detection_file)
+        setnames(detection_cis_assocs, c("SNP", "t-stat", "p-value"), c("snps", "statistic", "pvalue"))
+      }
       detection_cis_assocs[,corrected_pval := p.adjust(pvalue, method="bonferroni"), by=gene] # local SNP correction
 
       # For the Winner's Curse correction we will examine the SNP-gene
@@ -392,6 +438,13 @@ BootstrapEQTL <- function(
       cvrt_estimation <- cvrt$Clone()
       cvrt_estimation$ColumnSubsample(id_estimation)
 
+      # File to save estimation group associations
+      if (is.null(bootstrap_file_directory)) {
+        estimation_file <- NULL
+      } else {
+        estimation_file <- file.path(bootstrap_file_directory, paste0("detection_", id_boot, ".txt"))
+      }
+
       eQTL_estimation <- Matrix_eQTL_main(
         snps = snps_estimation,
         gene = gene_estimation,
@@ -402,16 +455,21 @@ BootstrapEQTL <- function(
         pvOutputThreshold.cis = 1,
         snpspos = snpspos,
         genepos = genepos,
-        cisDist = cisDist,
+        cisDist = 1e6,
         output_file_name=NULL,
-        output_file_name.cis=NULL,
-        noFDRsaveMemory=FALSE,
+        output_file_name.cis=estimation_file,
+        noFDRsaveMemory=ifelse(is.null(estimation_file), FALSE, TRUE),
         verbose=FALSE
       )
 
       # Add the estimation beta to the significant bootstrap association
       # table
-      estimation_cis_assocs <- as.data.table(eQTL_estimation$cis$eqtls)
+      if (is.null(estimation_file)) {
+        estimation_cis_assocs <- as.data.table(eQTL_estimation$cis$eqtls)
+      } else {
+        estimation_cis_assocs <- fread(estimation_file)
+        setnames(estimation_cis_assocs, c("SNP", "t-stat", "p-value"), c("snps", "statistic", "pvalue"))
+      }
       estimation_assocs <- estimation_cis_assocs[, list(gene, snps, estimation_beta=beta)]
       setkey(sig_boot_assocs, gene, snps)
       setkey(estimation_assocs, gene, snps)

@@ -5,7 +5,8 @@
 \title{Bootstrap eQTL analysis for accurate effect size estimation}
 \usage{
 BootstrapEQTL(snps, gene, cvrt = SlicedData$new(), snpspos, genepos,
-  cisDist = 1e+06, n_bootstraps = 200, n_cores = 1)
+  n_bootstraps = 200, n_cores = 1, eGene_detection_file_name = NULL,
+  bootstrap_file_directory = NULL)
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -27,15 +28,30 @@ determine SNPs in \emph{cis} of each gene. Must have three columns: \enumerate{
   \item 'pos' describing the position of the SNP on the chromosome.
 }}
 
-\item{cisDist}{\code{numeric}. Argument for \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
-SNP-gene pairs within this distance on the same chromosome are
-considered local (in-\emph{cis}). Distance is measured to the
-nearest end of the gene.}
-
 \item{n_bootstraps}{number of bootstraps to run.}
 
 \item{n_cores}{number of cores to parallise the bootstrap procedure
 over.}
+
+\item{eGene_detection_file_name}{\code{character}, \code{connection} or \code{NULL}.
+File to save local \emph{cis} associations to in the eGene detection analysis. Corresponds
+to the \code{output_file_name.cis} argument in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+If a file with this name exists it is overwritten, if \code{NULL} output is not saved
+to file.}
+
+\item{bootstrap_file_directory}{\code{character} or \code{NULL}. If not \code{NULL},
+ files will be saved in this directory storing local \emph{cis} associations for
+ the bootstrap eGene detection group (detection_bootstrapnumber.txt) and local
+ \emph{cis} associations the bootstrap left-out eGene effect size estimation
+ group (estimation_bootstrapnumber.txt). Estimation group files will only be saved
+ where signficant eGenes are also significant in the bootstrap detection group
+ (see Details). Corresponds to the \code{output_file_name.cis} argument in the
+ respective calls to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}. Files in this
+ directory will be overwritten if they already exist.
+
+Directory to save
+ local \emph{cis} associations for the bootstrap eGene detection and bootstrap
+ left-out eGene effect size estimation groups.}
 
 \item{genespos}{\code{data.frame} object with information about transcript locations.
 Used in conjunction with \code{'snpspos'} and \code{'cisDist'} to
@@ -47,10 +63,12 @@ determine SNPs in \emph{cis} of each gene. Must have four columns: \enumerate{
   \item 'right' describing the end position of the transcript.
 }}
 
-\item{...}{arguments for MatrixEQTL}
+\item{errorCovariance}{\code{numeric}. The error covariance matrix to
+use in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 }
 \value{
-A data.frame (or data.table) containing the results for each eGene:
+A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
+ user has the library loaded) containing the results for each eGene:
  \describe{
    \item{\code{'gene':}}{The eGene.}
    \item{\code{'top_snp':}}{The SNP with the smallest p-value for the eGene in the MatrixEQTL analysis.
