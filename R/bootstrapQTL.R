@@ -120,7 +120,7 @@
 #'     \item 'chr' describing the chromosome for each SNP.
 #'     \item 'pos' describing the position of the SNP on the chromosome.
 #'   }
-#' @param genespos \code{data.frame} object with information about transcript locations.
+#' @param genepos \code{data.frame} object with information about transcript locations.
 #'   Used in conjunction with \code{'snpspos'} and \code{'cisDist'} to
 #'   determine SNPs in \emph{cis} of each gene. Must have four columns: \enumerate{
 #'     \item 'geneid' describing the name of the gene and corresponding to rows in
@@ -133,8 +133,6 @@
 #' @param n_bootstraps number of bootstraps to run.
 #' @param n_cores number of cores to parallise the bootstrap procedure
 #'  over.
-#' @param errorCovariance \code{numeric}. The error covariance matrix to
-#'  use in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
 #' @param eGene_detection_file_name \code{character}, \code{connection} or \code{NULL}.
 #'  File to save local \emph{cis} associations to in the eGene detection analysis. Corresponds
 #'  to the \code{output_file_name.cis} argument in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
@@ -184,6 +182,8 @@
 #' @import foreach
 #' @import data.table
 #' @import MatrixEQTL
+#' @importFrom stats p.adjust
+#' @importFrom utils sessionInfo
 #'
 #' @export
 #'

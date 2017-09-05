@@ -28,6 +28,16 @@ determine SNPs in \emph{cis} of each gene. Must have three columns: \enumerate{
   \item 'pos' describing the position of the SNP on the chromosome.
 }}
 
+\item{genepos}{\code{data.frame} object with information about transcript locations.
+Used in conjunction with \code{'snpspos'} and \code{'cisDist'} to
+determine SNPs in \emph{cis} of each gene. Must have four columns: \enumerate{
+  \item 'geneid' describing the name of the gene and corresponding to rows in
+  the 'gene' matrix.
+  \item 'chr' describing the chromosome for each SNP.
+  \item 'left' describing the start position of the transcript.
+  \item 'right' describing the end position of the transcript.
+}}
+
 \item{n_bootstraps}{number of bootstraps to run.}
 
 \item{n_cores}{number of cores to parallise the bootstrap procedure
@@ -52,19 +62,6 @@ to file.}
 Directory to save
  local \emph{cis} associations for the bootstrap eGene detection and bootstrap
  left-out eGene effect size estimation groups.}
-
-\item{genespos}{\code{data.frame} object with information about transcript locations.
-Used in conjunction with \code{'snpspos'} and \code{'cisDist'} to
-determine SNPs in \emph{cis} of each gene. Must have four columns: \enumerate{
-  \item 'geneid' describing the name of the gene and corresponding to rows in
-  the 'gene' matrix.
-  \item 'chr' describing the chromosome for each SNP.
-  \item 'left' describing the start position of the transcript.
-  \item 'right' describing the end position of the transcript.
-}}
-
-\item{errorCovariance}{\code{numeric}. The error covariance matrix to
-use in \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 }
 \value{
 A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -185,6 +182,18 @@ Curse".
  significant when performing global FDR correction across the top
  bootstrap detection group SNP but not when performing global FDR
  correction on the top SNP from the origina eGene detection analysis.
+ }
+ \subsection{Warning messages:}{
+ It is possible for bootstrap analyses to fail due to the reduced
+ sample sizes of the bootstrap detection and bootstrap estimation
+ groups. For example, the bootstrap resampling may lead to an
+ estimation group in which all individuals are homozygous for the
+ eQTL SNP or are all the same age or sex. This causes the eQTL
+ analysis to crash since the linear models cannot be fit. These
+ errors are collated at the end of the bootstrap procedure, grouped
+ together, and reported as a series of warnings detailing the number
+ of bootstraps in which the error occurred as well as whether they
+ occurred in the detection or estimation groups.
  }
 }
 \examples{
