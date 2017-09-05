@@ -183,7 +183,6 @@
 #' @import data.table
 #' @import MatrixEQTL
 #' @importFrom stats p.adjust
-#' @importFrom utils sessionInfo
 #'
 #' @export
 #'
@@ -239,6 +238,28 @@ BootstrapEQTL <- function(
   bootstrap_file_directory=NULL
 ) {
 
+  # R CMD check complains about data.table columns and foreach iterators
+  # being undefined global variables or functions. The following
+  # statements are functionally useless other than to suppress the R CMD
+  # check warnings
+  N <- NULL
+  bootstrap <- NULL
+  corrected_beta <- NULL
+  corrected_pval <- NULL
+  detection_beta <- NULL
+  error <- NULL
+  error_type <- NULL
+  estimation_beta <- NULL
+  id_boot <- NULL
+  nominal_beta <- NULL
+  nominal_pval <- NULL
+  prop_top_eSNP <- NULL
+  pvalue <- NULL
+  snp_type <- NULL
+  statistic <- NULL
+  top_snp <- NULL
+  winners_curse <- NULL
+
   # Check column names are in same order
   if (!(all(snps$columnNames == gene$columnNames))) {
     stop("'snps' and 'genes' column names must be in same order")
@@ -278,9 +299,9 @@ BootstrapEQTL <- function(
 
   # Check if the user has already loaded data.table: if not, load it and
   # make sure we return the table as a data.frame
-  has.data.table <- "data.table" %in% names(sessionInfo()$otherPkgs)
+  has.data.table <- isNamespaceLoaded("data.table")
   if (!has.data.table) {
-    suppressPackageStartupMessages(require("data.table")) # silently load without tutorial message
+    suppressMessages(requireNamespace("data.table")) # silently load without tutorial message
   }
 
   # Run Matrix eQTL to determine significant eGenes and get nominal
