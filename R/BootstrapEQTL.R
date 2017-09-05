@@ -230,11 +230,12 @@
 #' }
 #'
 #' # Run the BootstrapEQTL analysis
-#' eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos)
+#' eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos,
+#'                         n_bootstraps=10, n_cores=2)
 #'
 BootstrapEQTL <- function(
   snps, gene, cvrt=SlicedData$new(), snpspos, genepos,
-  n_bootstraps=200, n_cores=1, eGene_detection_file_name=NULL,
+  n_bootstraps=500, n_cores=1, eGene_detection_file_name=NULL,
   bootstrap_file_directory=NULL
 ) {
 
@@ -259,6 +260,11 @@ BootstrapEQTL <- function(
   statistic <- NULL
   top_snp <- NULL
   winners_curse <- NULL
+
+  # stringsAsFactors=TRUE causes crashes here
+  saf <- options("stringsAsFactors")
+  options(stringsAsFactors=FALSE)
+  on.exit(options(stringsAsFactors=saf))
 
   # Check column names are in same order
   if (!(all(snps$columnNames == gene$columnNames))) {
@@ -295,7 +301,7 @@ BootstrapEQTL <- function(
   par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
   on.exit({
     cleanupCluster(par_setup$cluster, par_setup$predef)
-  })
+  }, add = TRUE)
 
   # Check if the user has already loaded data.table: if not, load it and
   # make sure we return the table as a data.frame
