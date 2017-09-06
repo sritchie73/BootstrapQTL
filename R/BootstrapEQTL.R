@@ -356,7 +356,12 @@ BootstrapEQTL <- function(
   setkey(top_blocks, gene)
   eGenes[,top_snp := top_blocks[gene, top_snp]]
 
+  if (eGenes[corrected_pval < 0.05, .N] == 0) {
+    warning("No significant eGenes detected")
+    return(eGenes)
+  }
 
+  cat("Running bootstrap procedure for ", n_bootstraps, " bootstraps.\n")
   # Run MatrixEQTL in each bootstrap detection group and estimation
   # group
   boot_eGenes <- foreach(id_boot = seq_len(n_bootstraps),
