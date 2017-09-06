@@ -1,14 +1,14 @@
 Package: BootstrapEQTL
 Type: Package
-Title: Correct for Winner's Curse in eQTL studies
+Title: Bootstrap cis-eQTL method that correct's for The Winner's Curse
 Version: 0.1.0
 Authors@R: c(person(given="Qinqin", family="Huang", role=c("aut")),
     person(given="Scott", family="Ritchie", 
          email="sritchie73@gmail.com", role=c("aut", "cre")))
 BugReports: https://github.com/InouyeLab/bootstrapQTL/issues
-Description: Performs bootstrap weighted re-estimation on the 
-    output of MatrixEQTL to obtain unbiased effect size 
-    estimates to correct for the "Winner's Curse" in eQTL 
+Description: Identifies significant eGenes and performs a boostrap 
+    procedure to obtain unbiased effect size estimates to correct for 
+    the "Winner's Curse" in eQTL 
     studies.
 Depends:
   MatrixEQTL
