@@ -13,7 +13,6 @@ The latest stable version of NetRep can be installed either directly from
 from this GitHub repository:
 
 ```{r}
-# Alternatively From GitHub
 library(devtools)
 install_github("InouyeLab/BootstrapEQTL")
 ```
@@ -26,7 +25,7 @@ The following code shows an example of loading genotype data, gene
 expression data, covariates data, snp position data, and gene position
 data using the MatrixEQTL package example dataset:
 
-```
+```{r}
 library(BootstrapEQTL)
 
 # Locations for example data from the MatrixEQTL package
@@ -88,7 +87,7 @@ genepos = read.table(gene_location_file_name, header = TRUE, stringsAsFactors = 
 Once the data has been loaded into R the BootstrapEQTL analysis can be
 run with a single command:
 
-```
+```{r}
 # Run the BootstrapEQTL analysis
 eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos,
                         n_bootstraps=500, n_cores=2,
