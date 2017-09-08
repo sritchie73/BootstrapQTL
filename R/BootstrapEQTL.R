@@ -264,7 +264,7 @@ BootstrapEQTL <- function(
   best_boot_eSNP <- NULL
 
   # stringsAsFactors=TRUE causes crashes here
-  saf <- options("stringsAsFactors")
+  saf <- options("stringsAsFactors")[[1]]
   options(stringsAsFactors=FALSE)
   on.exit(options(stringsAsFactors=saf))
 
