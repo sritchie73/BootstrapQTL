@@ -109,9 +109,6 @@
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
 #' @param gene \code{\link[MatrixEQTL]{SlicedData}} object containing gene expression
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
-#' @param cvrt \code{\link[MatrixEQTL]{SlicedData}} object containing covariate
-#'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
-#'   Argument can be ignored in the case of no covariates.
 #' @param snpspos \code{data.frame} object with information about SNP locations.
 #'   Used in conjunction with \code{'genespos'} and \code{'cisDist'} to
 #'   determine SNPs in \emph{cis} of each gene. Must have three columns: \enumerate{
@@ -129,7 +126,9 @@
 #'     \item 'left' describing the start position of the transcript.
 #'     \item 'right' describing the end position of the transcript.
 #'   }
-#'
+#' @param cvrt \code{\link[MatrixEQTL]{SlicedData}} object containing covariate
+#'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+#'   Argument can be ignored in the case of no covariates.
 #' @param n_bootstraps number of bootstraps to run.
 #' @param n_cores number of cores to parallise the bootstrap procedure
 #'  over.
@@ -234,7 +233,7 @@
 #'                         n_bootstraps=10, n_cores=2)
 #'
 BootstrapEQTL <- function(
-  snps, gene, cvrt=SlicedData$new(), snpspos, genepos,
+  snps, gene, snpspos, genepos, cvrt=SlicedData$new(),
   n_bootstraps=500, n_cores=1, eGene_detection_file_name=NULL,
   bootstrap_file_directory=NULL
 ) {

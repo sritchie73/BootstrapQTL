@@ -4,7 +4,7 @@
 \alias{BootstrapEQTL}
 \title{Bootstrap eQTL analysis for accurate effect size estimation}
 \usage{
-BootstrapEQTL(snps, gene, cvrt = SlicedData$new(), snpspos, genepos,
+BootstrapEQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   n_bootstraps = 500, n_cores = 1, eGene_detection_file_name = NULL,
   bootstrap_file_directory = NULL)
 }
@@ -14,10 +14,6 @@ information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 
 \item{gene}{\code{\link[MatrixEQTL]{SlicedData}} object containing gene expression
 information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
-
-\item{cvrt}{\code{\link[MatrixEQTL]{SlicedData}} object containing covariate
-information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
-Argument can be ignored in the case of no covariates.}
 
 \item{snpspos}{\code{data.frame} object with information about SNP locations.
 Used in conjunction with \code{'genespos'} and \code{'cisDist'} to
@@ -37,6 +33,10 @@ determine SNPs in \emph{cis} of each gene. Must have four columns: \enumerate{
   \item 'left' describing the start position of the transcript.
   \item 'right' describing the end position of the transcript.
 }}
+
+\item{cvrt}{\code{\link[MatrixEQTL]{SlicedData}} object containing covariate
+information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
+Argument can be ignored in the case of no covariates.}
 
 \item{n_bootstraps}{number of bootstraps to run.}
 
