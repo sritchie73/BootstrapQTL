@@ -65,7 +65,7 @@ Directory to save
 }
 \value{
 A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
- user has the library loaded) containing the results for each eGene:
+ user has the library loaded) containing the results for each significant eGene:
  \describe{
    \item{\code{'gene':}}{The eGene.}
    \item{\code{'top_snp':}}{The SNP with the smallest p-value for the eGene in the MatrixEQTL analysis.
