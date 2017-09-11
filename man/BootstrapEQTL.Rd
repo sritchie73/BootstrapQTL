@@ -6,7 +6,8 @@
 \usage{
 BootstrapEQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   n_bootstraps = 500, n_cores = 1, eGene_detection_file_name = NULL,
-  bootstrap_file_directory = NULL)
+  bootstrap_file_directory = NULL, cisDist = 1e+06,
+  local_correction = "bonferroni", global_correction = "fdr")
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -50,18 +51,28 @@ If a file with this name exists it is overwritten, if \code{NULL} output is not 
 to file.}
 
 \item{bootstrap_file_directory}{\code{character} or \code{NULL}. If not \code{NULL},
- files will be saved in this directory storing local \emph{cis} associations for
- the bootstrap eGene detection group (detection_bootstrapnumber.txt) and local
- \emph{cis} associations the bootstrap left-out eGene effect size estimation
- group (estimation_bootstrapnumber.txt). Estimation group files will only be saved
- where signficant eGenes are also significant in the bootstrap detection group
- (see Details). Corresponds to the \code{output_file_name.cis} argument in the
- respective calls to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}. Files in this
- directory will be overwritten if they already exist.
+files will be saved in this directory storing local \emph{cis} associations for
+the bootstrap eGene detection group (detection_bootstrapnumber.txt) and local
+\emph{cis} associations the bootstrap left-out eGene effect size estimation
+group (estimation_bootstrapnumber.txt). Estimation group files will only be saved
+where signficant eGenes are also significant in the bootstrap detection group
+(see Details). Corresponds to the \code{output_file_name.cis} argument in the
+respective calls to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}. Files in this
+directory will be overwritten if they already exist.}
 
-Directory to save
- local \emph{cis} associations for the bootstrap eGene detection and bootstrap
- left-out eGene effect size estimation groups.}
+\item{cisDist}{\code{numeric}. Argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
+controlling maximum distance SNP-gene pairs are considered local. The distance is
+measured to the nearest end of the gene.}
+
+\item{local_correction}{multiple testing correction method to use when
+correcting p-values across all SNPs at each eGene. Must be a method
+specified in \code{\link[stats]{p.adjust.methods}} or "qvalue" for
+the \code{\link[qvalue]{qvalue}} package.}
+
+\item{global_correction}{multiple testing correction method to use when
+correcting p-values across all eGenes. Must be a method specified in
+\code{\link[stats]{p.adjust.methods}} or "qvalue" for the
+\code{\link[qvalue]{qvalue}} package.}
 }
 \value{
 A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -107,13 +118,15 @@ Curse".
  \subsection{EGene detection:}{
  Detection of significant eGenes is performed using a hieararchical
  multiple testing correction procedure. At each gene, local multiple
- testing adjustment is performed through Bonferroni adjustment
- correcting for the number of \emph{cis}-SNPs tested. Global multiple
- testing adjustment is subsequently performed by taking the minimum
- Bonferroni adjusted p-value at each gene, then performing
- Benjamini-Hochberg FDR adjustment across all genes.This procedure
- best controls the eGene false discovery rate without
- sacrificing sensitivity (see citation).
+ testing adjustment is performed using the method specified by the
+ \code{'local_correction'} argument (Bonferroni correction by default)
+ to correct for the number of \emph{cis}-SNPs tested at each gene.
+ Global multiple testing adjustment is subsequently performed across
+ all genes by taking the minimum locally corrected p-value at each
+ gene, then performing the \code{'global_correction'} adjustment across
+ all genes (FDR correction by default). The default settings best
+ control ethe eGene false discovery rate without sacrificing
+ sensitivity (see citation).
  }
  \subsection{Winner's curse adjustment:}{
  EQTL effect sizes of significant eGenes are typically overestimated
@@ -240,7 +253,6 @@ if(length(covariates_file_name)>0) {
 }
 
 # Run the BootstrapEQTL analysis
-eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos,
-                        n_bootstraps=10, n_cores=2)
+eGenes <- BootstrapEQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2)
 
 }

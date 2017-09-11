@@ -18,6 +18,7 @@ Imports:
 Suggests:
   doMC,
   doParallel,
+  qvalue,
   testthat
 License: GPL-2
 Encoding: UTF-8

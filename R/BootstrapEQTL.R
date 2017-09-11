@@ -16,13 +16,15 @@
 #'  \subsection{EGene detection:}{
 #'  Detection of significant eGenes is performed using a hieararchical
 #'  multiple testing correction procedure. At each gene, local multiple
-#'  testing adjustment is performed through Bonferroni adjustment
-#'  correcting for the number of \emph{cis}-SNPs tested. Global multiple
-#'  testing adjustment is subsequently performed by taking the minimum
-#'  Bonferroni adjusted p-value at each gene, then performing
-#'  Benjamini-Hochberg FDR adjustment across all genes.This procedure
-#'  best controls the eGene false discovery rate without
-#'  sacrificing sensitivity (see citation).
+#'  testing adjustment is performed using the method specified by the
+#'  \code{'local_correction'} argument (Bonferroni correction by default)
+#'  to correct for the number of \emph{cis}-SNPs tested at each gene.
+#'  Global multiple testing adjustment is subsequently performed across
+#'  all genes by taking the minimum locally corrected p-value at each
+#'  gene, then performing the \code{'global_correction'} adjustment across
+#'  all genes (FDR correction by default). The default settings best
+#'  control ethe eGene false discovery rate without sacrificing
+#'  sensitivity (see citation).
 #'  }
 #'  \subsection{Winner's curse adjustment:}{
 #'  EQTL effect sizes of significant eGenes are typically overestimated
@@ -149,6 +151,14 @@
 #' @param cisDist \code{numeric}. Argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
 #'  controlling maximum distance SNP-gene pairs are considered local. The distance is
 #'  measured to the nearest end of the gene.
+#' @param local_correction multiple testing correction method to use when
+#'  correcting p-values across all SNPs at each eGene. Must be a method
+#'  specified in \code{\link[stats]{p.adjust.methods}} or "qvalue" for
+#'  the \code{\link[qvalue]{qvalue}} package.
+#' @param global_correction multiple testing correction method to use when
+#'  correcting p-values across all eGenes. Must be a method specified in
+#'  \code{\link[stats]{p.adjust.methods}} or "qvalue" for the
+#'  \code{\link[qvalue]{qvalue}} package.
 #'
 #' @return
 #'  A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -233,7 +243,8 @@
 BootstrapEQTL <- function(
   snps, gene, snpspos, genepos, cvrt=SlicedData$new(),
   n_bootstraps=500, n_cores=1, eGene_detection_file_name=NULL,
-  bootstrap_file_directory=NULL, cisDist=1e6
+  bootstrap_file_directory=NULL, cisDist=1e6, local_correction="bonferroni",
+  global_correction="fdr"
 ) {
 
   # R CMD check complains about data.table columns and foreach iterators
@@ -284,6 +295,19 @@ BootstrapEQTL <- function(
     stop('special characters ";" and "/" found in \'snpspos\' SNP identifiers')
   }
 
+  # Check multiple testing adjustment methods are ok
+  mult.test.methods <- c(p.adjust.methods, "qvalue")
+  if (!(local_correction %in% mult.test.methods ) ||
+      !(global_correction %in% mult.test.methods )) {
+    stop("'local_correction' and 'global_correction' must be one of ",
+         paste(paste0('"', p.adjust.methods, '"'), collapse=", "), ", or ",
+         '"qvalue".')
+  }
+  if ((local_correction == "qvalue" || global_correction == "qvalue") &&
+      !pkgReqCheck("qvalue")) {
+    stop("'qvalue' package not installed")
+  }
+
   # Force cis-eQTL analysis
   if (missing(snpspos) || is.na(snpspos) || is.null(snpspos)) {
     stop("'snpspos' must be provided")
@@ -326,7 +350,7 @@ BootstrapEQTL <- function(
 
   cat("Identifying significant eGenes..\n")
   cis_assocs <- get_cis_assocs(eQTLs, eGene_detection_file_name)
-  eGenes <- get_eGenes(cis_assocs, "bonferroni", "BH")
+  eGenes <- get_eGenes(cis_assocs, local_correction, global_correction)
 
   cat("Identifying SNPs in perfect LD with lead SNPs...\n")
   eGenes <- get_eSNPs(cis_assocs, eGenes, collapse=TRUE)
@@ -408,7 +432,7 @@ BootstrapEQTL <- function(
       # pairs for significant eGenes from the eGene detection analysis.
       # If there were multiple SNPs in perfect LD, take the first --
       # we must have only 1 pvalue for the subsequent FDR correction.
-      detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, "bonferroni", "BH",
+      detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction,
                                         eSNPs=eGenes[,list(gene, snps=gsub("/.*", "", top_snp))])
 
       # Filter to significant eGenes
@@ -419,7 +443,7 @@ BootstrapEQTL <- function(
 
       # We also want to collect statistics about the top eSNP in the
       # detection group
-      detection_top_SNPs <- get_eGenes(detection_cis_assocs, "bonferroni", "BH")
+      detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
       # Filter to significant eGenes
       detection_top_SNPs <- detection_top_SNPs[
         corrected_pval < 0.05 & # Is the gene significant in this bootstrap?
