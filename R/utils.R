@@ -150,3 +150,19 @@ cleanupCluster <- function(cluster, predef) {
 pkgReqCheck <- function(pkg) {
   suppressMessages(suppressWarnings(requireNamespace(pkg, quietly=TRUE)))
 }
+
+### Get table of cis associations from MatrixEQTL output
+###
+### @param meqtl_obj object returend by Matrix_eQTL_main
+### @param output_file file associations were saved to
+###
+### @return data.table of all cis-associations
+get_cis_assocs <- function(meqtl_obj, output_file) {
+  if (is.null(output_file)) {
+    cis_assocs <- as.data.table(meqtl_obj$cis$eqtls)
+  } else {
+    cis_assocs <- fread(output_file)
+    setnames(cis_assocs, c("SNP", "t-stat", "p-value"), c("snps", "statistic", "pvalue"))
+  }
+  return(cis_assocs)
+}
