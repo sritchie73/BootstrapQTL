@@ -9,6 +9,12 @@
 ###
 ### @return a table containing one or more rows for each eGene with the top eSNPs
 get_eSNPs <- function(cis_assocs, eGenes, collapse=FALSE) {
+  # Suppress CRAN notes about data.table columns
+  gene <- NULL
+  snps <- NULL
+  statistic <- NULL
+  pvalue <- NULL
+
   top_blocks <- merge(cis_assocs[,list(gene, snps, statistic, beta, pvalue)],
                       eGenes[,list(gene, statistic, beta, pvalue)],
                        by=c("gene", "statistic", "beta", "pvalue"))

@@ -11,6 +11,12 @@
 ###
 ### @return a data.table containing only significant eGenes and their top SNP
 get_eGenes <- function(cis_assocs, local, global,  eSNPs) {
+  # Suppress CRAN notes about data.table columns
+  corrected_pval <- NULL
+  pvalue <- NULL
+  gene <- NULL
+  statistic <- NULL
+
   cis_assocs[, corrected_pval := adjust_p(pvalue, method=local), by=gene]
 
   if (!missing(eSNPs)) {
@@ -31,7 +37,7 @@ get_eGenes <- function(cis_assocs, local, global,  eSNPs) {
 ### Adjust p-values for multiple tests
 adjust_p <- function(pvals, method) {
   if (method == "qvalue") {
-    qvalue(pvals)$qvalues
+    qvalue::qvalue(pvals)$qvalues
   } else {
     p.adjust(pvals, method)
   }

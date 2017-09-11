@@ -190,7 +190,7 @@
 #' @import foreach
 #' @import data.table
 #' @import MatrixEQTL
-#' @importFrom stats p.adjust
+#' @importFrom stats p.adjust p.adjust.methods
 #'
 #' @export
 #'
@@ -261,7 +261,7 @@ BootstrapEQTL <- function(
   estimation_beta <- NULL
   id_boot <- NULL
   nominal_beta <- NULL
-  nominal_pval <- NULL
+  # nominal_pval <- NULL
   prop_top_eSNP <- NULL
   pvalue <- NULL
   snp_type <- NULL
