@@ -381,16 +381,17 @@ BootstrapEQTL <- function(
   boot_eGenes <- foreach(id_boot = seq_len(n_bootstraps),
                          .inorder = FALSE,
                          .export = boot_objs, .noexport=other_objs,
-                         .combine=rbind
+                         .combine=rbind_dt
   ) %dopar% {
-    # Silently load packages on parallel workers
-    suppressMessages(requireNamespace("data.table"))
-    suppressMessages(requireNamespace("MatrixEQTL"))
+    tryCatch({ # WHY IS EXCEPTION HANDLING SO HARD IN THIS TERRIBLE LANGUAGE?
+      # Silently load packages on parallel workers
+      suppressMessages(requireNamespace("data.table"))
+      suppressMessages(requireNamespace("MatrixEQTL"))
 
-    tryCatch({
       n_samples <- ncol(snps)
       id_detection <- sample(seq_len(n_samples), n_samples, replace = TRUE)
       id_estimation <- setdiff(seq_len(n_samples), id_detection)
+
 
       # Copy and subset the gene and snp data for the bootstrap
       # detection group
@@ -434,29 +435,21 @@ BootstrapEQTL <- function(
       # we must have only 1 pvalue for the subsequent FDR correction.
       detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction,
                                         eSNPs=eGenes[,list(gene, snps=gsub("/.*", "", top_snp))])
+      # Filter to significant eGenes that are significant in this bootstrap
+      detection_eQTL_SNPs <- detection_eQTL_SNPs[corrected_pval < 0.05 & gene %in% eGenes[corrected_pval < 0.05, gene]]
+      # Add information columns
 
-      # Filter to significant eGenes
-      detection_eQTL_SNPs <- detection_eQTL_SNPs[
-        corrected_pval < 0.05 & # Is the gene significant in this bootstrap?
-        gene %in% eGenes[corrected_pval < 0.05, gene] # And in the original eGene detection analysis?
-      ]
 
-      # We also want to collect statistics about the top eSNP in the
-      # detection group
+      # We also want to collect statistics about the top eSNP in the detection group
       detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
       # Filter to significant eGenes
-      detection_top_SNPs <- detection_top_SNPs[
-        corrected_pval < 0.05 & # Is the gene significant in this bootstrap?
-        gene %in% eGenes[corrected_pval < 0.05, gene] # And in the original eGene detection analysis?
-      ]
-      # Get eSNPs with identical statisticis due to perfect LD in
-      # bootstrap detection group
+      detection_top_SNPs <- detection_top_SNPs[corrected_pval < 0.05 & gene %in% eGenes[corrected_pval < 0.05, gene]]
+      # Get eSNPs with identical statisticis due to perfect LD in bootstrap detection group
       detection_top_SNPs <- get_eSNPs(detection_cis_assocs, detection_top_SNPs, collapse=FALSE)
 
-      # These are the columns we want to keep out the other end
-      detection_eQTL_SNPs <- detection_eQTL_SNPs[, list(gene, snps, detection_beta=beta)]
-      detection_top_SNPs <- detection_top_SNPs[,list(gene, snps, detection_beta=NA_real_,
-                                                      estimation_beta=NA_real_, snp_type="top")]
+      # Filter columns
+      detection_eQTL_SNPs <- detection_eQTL_SNPs[, list(gene, snps, detection_beta=beta, snp_type="eQTL", bootstrap=id_boot)]
+      detection_top_SNPs <- detection_top_SNPs[, list(gene, snps, snp_type="top", bootstrap=id_boot)]
 
       # If there are no significant eGenes in this bootstrap we can move
       # to the next one
@@ -464,11 +457,7 @@ BootstrapEQTL <- function(
         if (nrow(detection_top_SNPs) == 0) {
           return(NULL)
         } else {
-          sig_boot_assocs <- detection_top_SNPs
-          sig_boot_assocs[, bootstrap := id_boot]
-          sig_boot_assocs[, error := NA_character_]
-          sig_boot_assocs[, error_type := NA_character_]
-          return(sig_boot_assocs)
+          return(detection_top_SNPs)
         }
       }
 
@@ -522,38 +511,14 @@ BootstrapEQTL <- function(
                                  by=c("gene", "snps"))
 
         # Add the top detection SNPs table
-        sig_boot_assocs[, snp_type := "eQTL"]
-        sig_boot_assocs <- rbind(sig_boot_assocs, detection_top_SNPs)
-
-        # Other housekeeping info
-        sig_boot_assocs[,bootstrap := id_boot]
-        sig_boot_assocs[,error := NA_character_]
-        sig_boot_assocs[, error_type := NA_character_]
+        sig_boot_assocs <- rbind(sig_boot_assocs, detection_top_SNPs, fill=TRUE)
 
         return(sig_boot_assocs)
-      }, warning=function(w) {
-        warning(w$message) # pass through warnings -- shouldnt happen unless there's bugs
       }, error=function(e) {
-        # If the estimation group eQTL analysis fails, return just the
-        # top SNPs
-        sig_boot_assocs <- detection_top_SNPs
-        sig_boot_assocs[, bootstrap := id_boot]
-        sig_boot_assocs[, error := NA_character_]
-        sig_boot_assocs[, error_type := NA_character_]
-
-        sig_boot_assocs <- rbind(sig_boot_assocs,
-           data.table(gene=NA, snps=NA, snp_type=NA, detection_beta=NA,
-                      estimation_beta=NA, bootstrap=id_boot, error=gsub("\n", " ", e$message),
-                      error_type="estimation"))
-        return(sig_boot_assocs)
+        return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
       })
-    }, warning=function(w) {
-      warning(w$message) # pass through warnings -- shouldnt happen unless there's bugs
     }, error=function(e) {
-      # If the detection group eQTL analysis fails return just the errors
-      return(data.table(gene=NA, snps=NA, snp_type=NA, detection_beta=NA,
-                        estimation_beta=NA, bootstrap=id_boot, error=gsub("\n", " ", e$message),
-                        error_type="detection"))
+      return(data.table(bootstrap=id_boot, error=e$message, error_type="detection"))
     })
   }
 

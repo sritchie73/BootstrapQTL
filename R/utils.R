@@ -166,3 +166,10 @@ get_cis_assocs <- function(meqtl_obj, output_file) {
   }
   return(cis_assocs)
 }
+
+### rbind two data tables while filling in missing columns with NA
+###
+### used as an argument to foreach's .combine
+rbind_dt <- function(...) {
+  rbind(..., fill=TRUE)
+}
