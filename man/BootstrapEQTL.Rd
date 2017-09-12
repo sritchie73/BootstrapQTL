@@ -8,7 +8,8 @@ BootstrapEQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   n_bootstraps = 200, n_cores = 1, eGene_detection_file_name = NULL,
   bootstrap_file_directory = NULL, cisDist = 1e+06,
   local_correction = "bonferroni", global_correction = "fdr",
-  bootstrap_eSNPs = "discovery", correction_type = "shrinkage")
+  bootstrap_eSNPs = "discovery", correction_type = "shrinkage",
+  errorCovariance = numeric(), useModel = modelLINEAR)
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -86,6 +87,14 @@ by eQTL analysis in the bootstrap detection group.}
 \item{correction_type}{\code{character}. One of "shrinkage", "out_of_sample"
 or "weighted". Determines which Winner's Curse correction method is
 used (see Details).}
+
+\item{errorCovariance}{\code{numeric matrix} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
+specifying the error covariance.}
+
+\item{useModel}{\code{integer} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
+specifying the type of model to fit between each SNP and gene. Should be one of
+\code{\link[MatrixEQTL]{modelLINEAR}}, \code{\link[MatrixEQTL]{modelANOVA}}, or
+\code{\link[MatrixEQTL]{modelLINEAR_CROSS}}.}
 }
 \value{
 A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
