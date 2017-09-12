@@ -26,36 +26,55 @@
 #'  control ethe eGene false discovery rate without sacrificing
 #'  sensitivity (see citation).
 #'  }
-#'  \subsection{Winner's curse adjustment:}{
+#'  \subsection{Winner's Curse correction:}{
 #'  EQTL effect sizes of significant eGenes are typically overestimated
 #'  when compared to replication datasets due to the selection of the
 #'  best \emph{cis}-SNP at each gene. \code{BootstrapEQTL} removes this
 #'  overestimation by performing a bootstrap procedure after significant
 #'  eGene discovery by \code{\link{MatrixEQTL}}.
 #'
-#'  The bootstrap procedure provides an estimate of the effect size
-#'  overestimation ("Winner's Curse") by partitioning the discovery
-#'  dataset into two groups: an eQTL detection group, and an effect size
-#'  estimation group. The eQTL detection group is determined by
-#'  bootstrapping (sampling with replacement) the dataset samples, with
-#'  the remaining samples (those not selected via the sampling with
-#'  replacement) composing the eQTL estimation group.
-#'  \code{\link{MatrixEQTL}} is then performed in the detection group in
-#'  the same way as described in the "EGene discovery:" section above to
-#'  determine whether significant eGenes remain significant in the
-#'  bootstrapped detection group when considering the same SNP-gene
-#'  pairs detected in the initial eGene discovery analysis. If the
-#'  significant eGenes remain significant in the bootstrapped detection
-#'  group, then the effect size of the SNP-Gene pair is calculated in
-#'  the left-out estimation group. The difference between the effect size
-#'  in the bootstrap detection group and the left-out estimation group
-#'  is then used as an estimate of the "Winner's Curse" effect for that
-#'  SNP-gene pair. This procedure is repeated several hundred times (see
-#'  the \code{'n_bootstraps'} argument) to obtain a robust "Winner's
-#'  Curse" effect for each SNP-Gene pair by averaging over significant
-#'  bootstraps. This is reported in the \code{winners_curse} column of
-#'  the returned table. The eQTL effect size corrected for the "Winner's
-#'  Curse" is reported in the \code{corrected_beta} column.
+#'  Three Winner's Curse correction methods are available: the Shrinkage
+#'  method, the Out of Sample method, and the Weighted Estimator method.
+#'  All three methods work on the same basic principle of performing
+#'  repeated sample bootstrapping to partition the dataset into two
+#'  groups: an eQTL detection group comprising study samples select via
+#'  random sampling with replacement, and an eQTL effect size estimation
+#'  group comprising the remaining samples not selected via the random
+#'  sampling.
+#'
+#'  The \strong{shrinkage method} ("shrinkage" in
+#'  \code{'correction_type'}) corrects for the winners curse by
+#'  measuring the average difference between the eGene effect size in
+#'  the bootstrap detection group and the bootstrap estimation group,
+#'  then subtracting this difference from the naive eQTL effect size
+#'  estimate obtained from the eGene detection analysis prior to the
+#'  bootstrap procedure.
+#'
+#'  The \strong{out of sample method} ("out_of_sample" in
+#'  \code{'correction_type'}) corrects for the winners curse by taking
+#'  the average eGene effect size across bootstrap estimation groups as
+#'  an unbiased effect size estimate.
+#'
+#'  The \strong{weighted estimator method} ("weighted" in
+#'  \code{'correction_type'}) corrects for the winners curse by taking a
+#'  weighted average of the naive estimate of the effect size and the
+#'  average of eGene effect sizes across the bootstrap estimation
+#'  groups: \eqn{0.368 * naive_estimate + 0.632 *
+#'  mean(bootstrap_estimation_group_effect_sizes)}.
+#'
+#'  In all three methods bootstrap group effect sizes only contribute to
+#'  the winner's curse correction if the corresponding eGene is
+#'  significant in the bootstrap detection group. Two approaches are
+#'  provided for measuring eGene significance and effect sizes in the
+#'  bootstrap groups: (1) using the SNP in each bootstrap detection group
+#'  with the smallest p-value ("top" in \code{'bootstrap_eSNPs'}), and
+#'  (2) using the SNP with the smallest p-value in the eGene detection
+#'  analysis performed prior to the bootstrap procedure ("discovery" in
+#'  \code{'bootstrap_eSNPs'}).
+#'
+#'  The default settings, \code{'correction_type = "shrinkage"'} and
+#'  \code{'bootstrap_eSNPs = "discovery"'} provided the most accurate
+#'  corrected effect sizes in our simulation study (see citation).
 #'
 #'  Note that SNP-gene pairs may not remain significant in all
 #'  bootstraps, so the effective number of bootstraps used obtain the
@@ -85,14 +104,16 @@
 #'  significant bootstraps and SNP2 and SNP3 are in perfect LD and were
 #'  was the top SNP in the other 50\% of significant bootstraps). The
 #'  \code{'prop_top_eSNP'} column reports the proportion of significant
-#'  bootstraps for which the \code{'best_boot_eSNP'} was the top SNP.
-#'  A low \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate
-#'  complex LD structure around the top eSNP or multiple causal eSNPs.
-#'  Note that here the number of significant bootstraps may be higher
-#'  than that reported in \code{'correction_boots'} as an eGene may be
-#'  significant when performing global FDR correction across the top
-#'  bootstrap detection group SNP but not when performing global FDR
-#'  correction on the top SNP from the origina eGene detection analysis.
+#'  bootstraps for which the \code{'best_boot_eSNP'} was the top SNP. A
+#'  low \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate complex
+#'  LD structure around the top eSNP or multiple causal eSNPs. Note that
+#'  here the number of significant bootstraps may be higher than that
+#'  reported in \code{'correction_boots'} if
+#'  \code{'bootstrap_eSNPs="discovery"'}, as an eGene may be significant
+#'  when performing global multiple testing correction across the top
+#'  bootstrap detection group SNP but not when performing global
+#'  multiple testing correction on the top SNP from the original eGene
+#'  detection analysis.
 #'  }
 #'  \subsection{Warning messages:}{
 #'  It is possible for bootstrap analyses to fail due to the reduced
@@ -159,6 +180,16 @@
 #'  correcting p-values across all eGenes. Must be a method specified in
 #'  \code{\link[stats]{p.adjust.methods}} or "qvalue" for the
 #'  \code{\link[qvalue]{qvalue}} package.
+#' @param bootstrap_eSNPs \code{character}. One of "discovery" or "top".
+#'  Controls which SNPs are used for global multiple testing correction in
+#'  the bootstrap procedure. If "discovery" global correction of p-values
+#'  across eGenes is performed on the top eSNPs from the eGene detection
+#'  analysis performed prior to the bootstrap procedure. if "top", global
+#'  correction is performed using the top eSNP at each gene as identified
+#'  by eQTL analysis in the bootstrap detection group.
+#' @param correction_type \code{character}. One of "shrinkage", "out_of_sample"
+#'  or "weighted". Determines which Winner's Curse correction method is
+#'  used (see Details).
 #'
 #' @return
 #'  A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -242,9 +273,9 @@
 #'
 BootstrapEQTL <- function(
   snps, gene, snpspos, genepos, cvrt=SlicedData$new(),
-  n_bootstraps=500, n_cores=1, eGene_detection_file_name=NULL,
+  n_bootstraps=200, n_cores=1, eGene_detection_file_name=NULL,
   bootstrap_file_directory=NULL, cisDist=1e6, local_correction="bonferroni",
-  global_correction="fdr"
+  global_correction="fdr", bootstrap_eSNPs="discovery", correction_type="shrinkage"
 ) {
 
   # R CMD check complains about data.table columns and foreach iterators
@@ -261,7 +292,6 @@ BootstrapEQTL <- function(
   estimation_beta <- NULL
   id_boot <- NULL
   nominal_beta <- NULL
-  # nominal_pval <- NULL
   prop_top_eSNP <- NULL
   pvalue <- NULL
   snp_type <- NULL
@@ -277,12 +307,16 @@ BootstrapEQTL <- function(
   options(stringsAsFactors=FALSE)
   on.exit(options(stringsAsFactors=saf))
 
+  # Check class of 'snps' and 'gene'
+  if (!("SlicedData" %in% class(snps)) || !("SlicedData" %in% class(gene))) {
+    stop("'snps' and 'gene' must be an object of type \"SlicedData\"")
+  }
   # Check column names are in same order
   if (!(all(snps$columnNames == gene$columnNames))) {
-    stop("'snps' and 'genes' column names must be in same order")
+    stop("'snps' and 'gene' column names must be in same order")
   }
   if (cvrt$nCols() != 0 && !(all(cvrt$columnNames == gene$columnNames))) {
-    stop("'cvrt' column names must be in same order as 'snps' and 'genes'")
+    stop("'cvrt' column names must be in same order as 'snps' and 'gene'")
   }
 
   # Check for special characters in SNP ids
@@ -297,15 +331,26 @@ BootstrapEQTL <- function(
 
   # Check multiple testing adjustment methods are ok
   mult.test.methods <- c(p.adjust.methods, "qvalue")
-  if (!(local_correction %in% mult.test.methods ) ||
+  if (length(local_correction) > 1 || length(global_correction) > 1 ||
+      !(local_correction %in% mult.test.methods ) ||
       !(global_correction %in% mult.test.methods )) {
     stop("'local_correction' and 'global_correction' must be one of ",
          paste(paste0('"', p.adjust.methods, '"'), collapse=", "), ", or ",
-         '"qvalue".')
+         '"qvalue"')
   }
   if ((local_correction == "qvalue" || global_correction == "qvalue") &&
       !pkgReqCheck("qvalue")) {
     stop("'qvalue' package not installed")
+  }
+
+  # Check bootstrap_eSNPs input is ok
+  if (length(bootstrap_eSNPs) > 1 || !(bootstrap_eSNPs %in% c("top", "discovery"))) {
+    stop("'bootstrap_eSNPs' must be either \"top\" or \"discovery\"")
+  }
+
+  # Check correction_type input is ok
+  if (length(correction_type) > 1 || !(correction_type %in% c("shrinkage", "out_of_sample", "weighted"))) {
+    stop('\'correction_type\' must be one of "shrinkage", "out_of_sample", or "weighted"')
   }
 
   # Force cis-eQTL analysis
@@ -316,9 +361,38 @@ BootstrapEQTL <- function(
     stop("'genepos' must be provided")
   }
 
-  # Create bootstrap file directory
+  # Check snpspos and genepos inputs
+  if (!is.data.frame(snpspos) && ncol(snpspos) != 3) {
+    stop("'snpspos' must be a data.frame with 3 columns")
+  }
+  if (!is.data.frame(genepos) && ncol(genepos) != 4) {
+    stop("'genepos' must be a data.frame with 4 columns")
+  }
+
+  # Set up parallel computing environment
+  par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
+  on.exit({
+    cleanupCluster(par_setup$cluster, par_setup$predef)
+  }, add = TRUE)
+
+  # Check files and directories are ok
+  if (!is.null(eGene_detection_file_name) & length(eGene_detection_file_name) > 1) {
+    stop("Only 1 file may be specified in 'eGene_detection_file_name'")
+  }
+  if (!is.null(bootstrap_file_directory) & length(bootstrap_file_directory) > 1) {
+    stop("Only 1 directory may be specified in 'bootstrap_file_directory'")
+  }
   if (!is.null(bootstrap_file_directory)) {
-    dir.create(bootstrap_file_directory, showWarnings=FALSE)
+    tryCatch({
+      dir.create(bootstrap_file_directory, showWarnings=FALSE)
+    }, error=function(e) {
+      stop("Could not create or access directory specified in 'bootstrap_file_directory'")
+    })
+  }
+
+  # Check number of bootstraps
+  if (n_bootstraps < 1) {
+    stop("'n_bootstraps' must be larger than 0")
   }
 
   # Check if the user has already loaded data.table: if not, load it and
@@ -369,19 +443,14 @@ BootstrapEQTL <- function(
                   "genepos", "bootstrap_file_directory")
   other_objs <- ls()[!(ls() %in% boot_objs)]
 
-  # Set up parallel computing environment
-  par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
-  on.exit({
-    cleanupCluster(par_setup$cluster, par_setup$predef)
-  }, add = TRUE)
-
   cat("Running bootstrap procedure for", n_bootstraps, "bootstraps.\n")
   # Run MatrixEQTL in each bootstrap detection group and estimation
   # group
   boot_eGenes <- foreach(id_boot = seq_len(n_bootstraps),
                          .inorder = FALSE,
                          .export = boot_objs, .noexport=other_objs,
-                         .combine=rbind_dt
+                         .init = data.table(error=character(0), error_message=character(0)),
+                         .combine = rbind_dt  # rbind with FILL = TRUE as default
   ) %dopar% {
     tryCatch({ # WHY IS EXCEPTION HANDLING SO HARD IN THIS TERRIBLE LANGUAGE?
       # Silently load packages on parallel workers
@@ -429,16 +498,16 @@ BootstrapEQTL <- function(
       )
       detection_cis_assocs <- get_cis_assocs(eQTL_detection, detection_file)
 
-      # For the Winner's Curse correction we will examine the SNP-gene
-      # pairs for significant eGenes from the eGene detection analysis.
-      # If there were multiple SNPs in perfect LD, take the first --
-      # we must have only 1 pvalue for the subsequent FDR correction.
-      detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction,
-                                        eSNPs=eGenes[,list(gene, snps=gsub("/.*", "", top_snp))])
+      # Do eGene detection and effect size estimation in this bootstrap
+      if (bootstrap_eSNPs == "discovery") {
+        detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction,
+                                          eSNPs=eGenes[,list(gene, snps=gsub("/.*", "", top_snp))])
+      } else {
+        detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
+      }
+
       # Filter to significant eGenes that are significant in this bootstrap
       detection_eQTL_SNPs <- detection_eQTL_SNPs[corrected_pval < 0.05 & gene %in% eGenes[corrected_pval < 0.05, gene]]
-      # Add information columns
-
 
       # We also want to collect statistics about the top eSNP in the detection group
       detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
@@ -533,18 +602,13 @@ BootstrapEQTL <- function(
   }
   boot_eGenes <- boot_eGenes[is.na(error)]
 
-  # Adjust for winner's curse - shrinkage estimator
-  correction <- boot_eGenes[snp_type == "eQTL",
-                            list(winners_curse=mean(detection_beta-estimation_beta)),
-                            by=gene]
-  eGenes <- merge(eGenes, correction, by="gene", all.x=TRUE)
-  eGenes[, winners_curse := winners_curse]
-  eGenes[, corrected_beta := nominal_beta - winners_curse]
-
-  # Report the total number of significant bootstraps for each eGene
-  correction_boots <- boot_eGenes[snp_type == "eQTL", list(correction_boots=.N), by=gene]
-  eGenes <- merge(eGenes, correction_boots, by="gene", all.x=TRUE)
-  eGenes[corrected_pval < 0.05 & is.na(correction_boots), correction_boots := 0] # In case no bootstraps are significant
+  # Calculate the effect of the winner's curse. If effect sizes have been
+  # estimated using the top bootstrap eSNP then we need to account for the
+  # fact that different eSNPs with anti-correlated minor allele frequencies
+  # may have been the top SNP at each bootstrap
+  eGenes <- correct_winners_curse(
+    boot_eGenes[snp_type == "eQTL"], eGenes, correction_type,
+    ifelse(bootstrap_eSNPs == "top", TRUE, FALSE))
 
   # Calculate frequency of top SNPs across all significant boostraps to
   # report the best bootstrap eSNP (probable causal eSNP). In cases

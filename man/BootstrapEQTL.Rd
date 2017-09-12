@@ -5,9 +5,10 @@
 \title{Bootstrap eQTL analysis for accurate effect size estimation}
 \usage{
 BootstrapEQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
-  n_bootstraps = 500, n_cores = 1, eGene_detection_file_name = NULL,
+  n_bootstraps = 200, n_cores = 1, eGene_detection_file_name = NULL,
   bootstrap_file_directory = NULL, cisDist = 1e+06,
-  local_correction = "bonferroni", global_correction = "fdr")
+  local_correction = "bonferroni", global_correction = "fdr",
+  bootstrap_eSNPs = "discovery", correction_type = "shrinkage")
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -73,6 +74,18 @@ the \code{\link[qvalue]{qvalue}} package.}
 correcting p-values across all eGenes. Must be a method specified in
 \code{\link[stats]{p.adjust.methods}} or "qvalue" for the
 \code{\link[qvalue]{qvalue}} package.}
+
+\item{bootstrap_eSNPs}{\code{character}. One of "discovery" or "top".
+Controls which SNPs are used for global multiple testing correction in
+the bootstrap procedure. If "discovery" global correction of p-values
+across eGenes is performed on the top eSNPs from the eGene detection
+analysis performed prior to the bootstrap procedure. if "top", global
+correction is performed using the top eSNP at each gene as identified
+by eQTL analysis in the bootstrap detection group.}
+
+\item{correction_type}{\code{character}. One of "shrinkage", "out_of_sample"
+or "weighted". Determines which Winner's Curse correction method is
+used (see Details).}
 }
 \value{
 A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -128,36 +141,55 @@ Curse".
  control ethe eGene false discovery rate without sacrificing
  sensitivity (see citation).
  }
- \subsection{Winner's curse adjustment:}{
+ \subsection{Winner's Curse correction:}{
  EQTL effect sizes of significant eGenes are typically overestimated
  when compared to replication datasets due to the selection of the
  best \emph{cis}-SNP at each gene. \code{BootstrapEQTL} removes this
  overestimation by performing a bootstrap procedure after significant
  eGene discovery by \code{\link{MatrixEQTL}}.
 
- The bootstrap procedure provides an estimate of the effect size
- overestimation ("Winner's Curse") by partitioning the discovery
- dataset into two groups: an eQTL detection group, and an effect size
- estimation group. The eQTL detection group is determined by
- bootstrapping (sampling with replacement) the dataset samples, with
- the remaining samples (those not selected via the sampling with
- replacement) composing the eQTL estimation group.
- \code{\link{MatrixEQTL}} is then performed in the detection group in
- the same way as described in the "EGene discovery:" section above to
- determine whether significant eGenes remain significant in the
- bootstrapped detection group when considering the same SNP-gene
- pairs detected in the initial eGene discovery analysis. If the
- significant eGenes remain significant in the bootstrapped detection
- group, then the effect size of the SNP-Gene pair is calculated in
- the left-out estimation group. The difference between the effect size
- in the bootstrap detection group and the left-out estimation group
- is then used as an estimate of the "Winner's Curse" effect for that
- SNP-gene pair. This procedure is repeated several hundred times (see
- the \code{'n_bootstraps'} argument) to obtain a robust "Winner's
- Curse" effect for each SNP-Gene pair by averaging over significant
- bootstraps. This is reported in the \code{winners_curse} column of
- the returned table. The eQTL effect size corrected for the "Winner's
- Curse" is reported in the \code{corrected_beta} column.
+ Three Winner's Curse correction methods are available: the Shrinkage
+ method, the Out of Sample method, and the Weighted Estimator method.
+ All three methods work on the same basic principle of performing
+ repeated sample bootstrapping to partition the dataset into two
+ groups: an eQTL detection group comprising study samples select via
+ random sampling with replacement, and an eQTL effect size estimation
+ group comprising the remaining samples not selected via the random
+ sampling.
+
+ The \strong{shrinkage method} ("shrinkage" in
+ \code{'correction_type'}) corrects for the winners curse by
+ measuring the average difference between the eGene effect size in
+ the bootstrap detection group and the bootstrap estimation group,
+ then subtracting this difference from the naive eQTL effect size
+ estimate obtained from the eGene detection analysis prior to the
+ bootstrap procedure.
+
+ The \strong{out of sample method} ("out_of_sample" in
+ \code{'correction_type'}) corrects for the winners curse by taking
+ the average eGene effect size across bootstrap estimation groups as
+ an unbiased effect size estimate.
+
+ The \strong{weighted estimator method} ("weighted" in
+ \code{'correction_type'}) corrects for the winners curse by taking a
+ weighted average of the naive estimate of the effect size and the
+ average of eGene effect sizes across the bootstrap estimation
+ groups: \eqn{0.368 * naive_estimate + 0.632 *
+ mean(bootstrap_estimation_group_effect_sizes)}.
+
+ In all three methods bootstrap group effect sizes only contribute to
+ the winner's curse correction if the corresponding eGene is
+ significant in the bootstrap detection group. Two approaches are
+ provided for measuring eGene significance and effect sizes in the
+ bootstrap groups: (1) using the SNP in each bootstrap detection group
+ with the smallest p-value ("top" in \code{'bootstrap_eSNPs'}), and
+ (2) using the SNP with the smallest p-value in the eGene detection
+ analysis performed prior to the bootstrap procedure ("discovery" in
+ \code{'bootstrap_eSNPs'}).
+
+ The default settings, \code{'correction_type = "shrinkage"'} and
+ \code{'bootstrap_eSNPs = "discovery"'} provided the most accurate
+ corrected effect sizes in our simulation study (see citation).
 
  Note that SNP-gene pairs may not remain significant in all
  bootstraps, so the effective number of bootstraps used obtain the
@@ -187,14 +219,16 @@ Curse".
  significant bootstraps and SNP2 and SNP3 are in perfect LD and were
  was the top SNP in the other 50\% of significant bootstraps). The
  \code{'prop_top_eSNP'} column reports the proportion of significant
- bootstraps for which the \code{'best_boot_eSNP'} was the top SNP.
- A low \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate
- complex LD structure around the top eSNP or multiple causal eSNPs.
- Note that here the number of significant bootstraps may be higher
- than that reported in \code{'correction_boots'} as an eGene may be
- significant when performing global FDR correction across the top
- bootstrap detection group SNP but not when performing global FDR
- correction on the top SNP from the origina eGene detection analysis.
+ bootstraps for which the \code{'best_boot_eSNP'} was the top SNP. A
+ low \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate complex
+ LD structure around the top eSNP or multiple causal eSNPs. Note that
+ here the number of significant bootstraps may be higher than that
+ reported in \code{'correction_boots'} if
+ \code{'bootstrap_eSNPs="discovery"'}, as an eGene may be significant
+ when performing global multiple testing correction across the top
+ bootstrap detection group SNP but not when performing global
+ multiple testing correction on the top SNP from the original eGene
+ detection analysis.
  }
  \subsection{Warning messages:}{
  It is possible for bootstrap analyses to fail due to the reduced
