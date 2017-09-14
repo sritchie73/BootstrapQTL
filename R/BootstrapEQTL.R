@@ -622,7 +622,10 @@ BootstrapEQTL <- function(
   # report the best bootstrap eSNP (probable causal eSNP). In cases
   # where multiple SNPs occur equally freuqently we need to determine if
   # they are in perfect LD or not.
-  top_SNP <- boot_eGenes[snp_type == "top", list(prop_top_eSNP=.N/length(unique(bootstrap))), by=list(gene, snps)]
+  top_SNP_count <- boot_eGenes[snp_type == "top", .N, by=list(gene, snps)]
+  sig_boot_count <- boot_eGenes[snp_type == "top", list(boots=length(unique(bootstrap))), by=gene]
+  top_SNP <- merge(top_SNP_count, sig_boot_count, by="gene")
+  top_SNP[, prop_top_eSNP := N/boots]
   top_SNP <- top_SNP[, .SD[which(prop_top_eSNP == max(prop_top_eSNP))], by=gene] # filter to the most frequent per gene
 
   # We can use the original cis_assocs table to determine whether top
