@@ -89,8 +89,8 @@ run with a single command:
 
 ```{r}
 # Run the BootstrapEQTL analysis
-eGenes <- BootstrapEQTL(snps, gene, cvrt, snpspos, genepos,
-                        n_bootstraps=500, n_cores=2,
+eGenes <- BootstrapEQTL(snps, gene, snpspos, genepos,
+                        n_bootstraps=200, n_cores=2,
                         eGene_detection_file_name = "cis_eQTL_associations.txt",
                         bootstrap_file_directory = "bootstrap_analyses/")
 ```
