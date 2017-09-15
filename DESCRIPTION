@@ -1,7 +1,7 @@
 Package: BootstrapEQTL
 Type: Package
 Title: Bootstrap cis-eQTL method that correct's for The Winner's Curse
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(person(given="Qinqin", family="Huang", role=c("aut")),
     person(given="Scott", family="Ritchie", 
          email="sritchie73@gmail.com", role=c("aut", "cre")))
