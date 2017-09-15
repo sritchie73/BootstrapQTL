@@ -18,6 +18,7 @@ get_eGenes <- function(cis_assocs, local, global, eSNPs, snps_per_gene=NULL) {
   pvalue <- NULL
   gene <- NULL
   statistic <- NULL
+  n_snps <- NULL
 
   if (!is.null(snps_per_gene)) {
     setkey(snps_per_gene, "n_snps")

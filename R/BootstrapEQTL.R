@@ -317,6 +317,10 @@ BootstrapEQTL <- function(
   snp_block <- NULL
   ld_prev <- NULL
   best_boot_eSNP <- NULL
+  chr <- NULL
+  start <- NULL
+  end <- NULL
+  boots <- NULL
 
   # stringsAsFactors=TRUE causes crashes here
   saf <- options("stringsAsFactors")[[1]]
