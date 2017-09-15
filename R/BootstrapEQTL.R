@@ -190,6 +190,13 @@
 #' @param correction_type \code{character}. One of "shrinkage", "out_of_sample"
 #'  or "weighted". Determines which Winner's Curse correction method is
 #'  used (see Details).
+#' @param fast_mode \code{logical}. If \code{bootstrap_eSNPs = "discovery"} then
+#'  setting \code{fast_mode = TRUE} will dramatically speed up the bootstrap
+#'  procedure by restricting the analysis to the top SNP for each gene in
+#'  the MatrixEQTL analysis performed prior to the bootstrap procedure. This
+#'  means the collation of top SNPs across bootstraps is skipped, and the
+#'  returned table will not have the \code{'best_boot_eSNP'} and
+#'  \code{'prop_top_eSNP'} columns.
 #' @param errorCovariance \code{numeric matrix} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
 #'  specifying the error covariance.
 #' @param useModel \code{integer} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
@@ -283,7 +290,8 @@ BootstrapEQTL <- function(
   n_bootstraps=200, n_cores=1, eGene_detection_file_name=NULL,
   bootstrap_file_directory=NULL, cisDist=1e6, local_correction="bonferroni",
   global_correction="fdr", bootstrap_eSNPs="discovery",
-  correction_type="shrinkage", errorCovariance=numeric(), useModel=modelLINEAR
+  correction_type="shrinkage", fast_mode=FALSE, errorCovariance=numeric(),
+  useModel=modelLINEAR
 ) {
 
   # R CMD check complains about data.table columns and foreach iterators
@@ -384,10 +392,10 @@ BootstrapEQTL <- function(
   }, add = TRUE)
 
   # Check files and directories are ok
-  if (!is.null(eGene_detection_file_name) & length(eGene_detection_file_name) > 1) {
+  if (!is.null(eGene_detection_file_name) && length(eGene_detection_file_name) > 1) {
     stop("Only 1 file may be specified in 'eGene_detection_file_name'")
   }
-  if (!is.null(bootstrap_file_directory) & length(bootstrap_file_directory) > 1) {
+  if (!is.null(bootstrap_file_directory) && length(bootstrap_file_directory) > 1) {
     stop("Only 1 directory may be specified in 'bootstrap_file_directory'")
   }
   if (!is.null(bootstrap_file_directory)) {
@@ -403,11 +411,40 @@ BootstrapEQTL <- function(
     stop("'n_bootstraps' must be larger than 0")
   }
 
+  # Check if it makes sense to run fast_mode
+  if (length(fast_mode) != 1 || !is.logical(fast_mode) || !is.finite(fast_mode)) {
+    stop("'fast_mode' must be 'TRUE' or 'FALSE'")
+  }
+  if (fast_mode && bootstrap_eSNPs != "discovery") {
+    stop("'bootstrap_eSNPs' must be \"discovery\" when 'fast_mode=TRUE'")
+  }
+  if (fast_mode && local_correction != "bonferroni") {
+    stop("'local_correction' must be \"bonferroni\" when 'fastmode=TRUE'")
+  }
+
+  # Check cisDist
+  if (length(cisDist) != 1 || !is.numeric(cisDist) || !is.finite(cisDist) || cisDist < 1) {
+    stop("'cisDist' must be a number > 0")
+  }
+
   # Check if the user has already loaded data.table: if not, load it and
   # make sure we return the table as a data.frame
   has.data.table <- isNamespaceLoaded("data.table")
   if (!has.data.table) {
     suppressMessages(requireNamespace("data.table")) # silently load without tutorial message
+  }
+
+  # If fast_mode = TRUE we need to keep track of how many genes there are
+  # and how many SNPs each has in cis
+  snps_per_gene <- NULL
+  if (fast_mode) {
+    snp_pos_dt <- data.table(snp=snpspos[,1], chr=snpspos[,2], start=snpspos[,3], end=snpspos[,3])
+    gene_pos_dt <- data.table(gene=genepos[,1], chr=genepos[,2], start=genepos[,3] - cisDist, end=genepos[,4] + cisDist)
+    setkey(snp_pos_dt, chr, start, end)
+    setkey(gene_pos_dt, chr, start, end)
+
+    cis_pairs <- foverlaps(snp_pos_dt, gene_pos_dt, nomatch=0) # get table of cis-SNPs
+    snps_per_gene <- cis_pairs[,list(n_snps=.N),by=gene]
   }
 
   cat("Testing cis-eQTL associations...\n")
@@ -448,8 +485,19 @@ BootstrapEQTL <- function(
 
   # Make sure only necessary objects are ported to each worker
   boot_objs <-  c("cvrt", "snps", "gene", "cis_assocs", "eGenes", "snpspos",
-                  "genepos", "bootstrap_file_directory")
+                  "genepos", "bootstrap_file_directory", "snps_per_gene")
   other_objs <- ls()[!(ls() %in% boot_objs)]
+
+  # If fast mode filter the snps matrix to just the top SNP per gene -
+  # This dramatically saves memory if done prior to spawning the parallel
+  # R sessions.
+  if (fast_mode) {
+    full_snps <- snps$Clone()
+    snps <- snps$RowReorder(which(rownames(snps) %in% eGenes[,gsub("/.*", "", top_snp)]))
+    on.exit({
+      snps <- full_snps$Clone()
+    }, add = TRUE)
+  }
 
   cat("Running bootstrap procedure for", n_bootstraps, "bootstraps.\n")
   # Run MatrixEQTL in each bootstrap detection group and estimation
@@ -509,29 +557,31 @@ BootstrapEQTL <- function(
       # Do eGene detection and effect size estimation in this bootstrap
       if (bootstrap_eSNPs == "discovery") {
         detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction,
-                                          eSNPs=eGenes[,list(gene, snps=gsub("/.*", "", top_snp))])
+                                          eSNPs=eGenes[,list(gene, snps=gsub("/.*", "", top_snp))],
+                                          snps_per_gene=snps_per_gene)
       } else {
         detection_eQTL_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
       }
-
       # Filter to significant eGenes that are significant in this bootstrap
       detection_eQTL_SNPs <- detection_eQTL_SNPs[corrected_pval < 0.05 & gene %in% eGenes[corrected_pval < 0.05, gene]]
-
-      # We also want to collect statistics about the top eSNP in the detection group
-      detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
-      # Filter to significant eGenes
-      detection_top_SNPs <- detection_top_SNPs[corrected_pval < 0.05 & gene %in% eGenes[corrected_pval < 0.05, gene]]
-      # Get eSNPs with identical statisticis due to perfect LD in bootstrap detection group
-      detection_top_SNPs <- get_eSNPs(detection_cis_assocs, detection_top_SNPs, collapse=FALSE)
-
       # Filter columns
       detection_eQTL_SNPs <- detection_eQTL_SNPs[, list(gene, snps, detection_beta=beta, snp_type="eQTL", bootstrap=id_boot)]
-      detection_top_SNPs <- detection_top_SNPs[, list(gene, snps, snp_type="top", bootstrap=id_boot)]
+
+      if (!fast_mode) {
+        # We also want to collect statistics about the top eSNP in the detection group
+        detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
+        # Filter to significant eGenes
+        detection_top_SNPs <- detection_top_SNPs[corrected_pval < 0.05 & gene %in% eGenes[corrected_pval < 0.05, gene]]
+        # Get eSNPs with identical statisticis due to perfect LD in bootstrap detection group
+        detection_top_SNPs <- get_eSNPs(detection_cis_assocs, detection_top_SNPs, collapse=FALSE)
+        # Filter columns
+        detection_top_SNPs <- detection_top_SNPs[, list(gene, snps, snp_type="top", bootstrap=id_boot)]
+      }
 
       # If there are no significant eGenes in this bootstrap we can move
       # to the next one
       if(nrow(detection_eQTL_SNPs) == 0) {
-        if (nrow(detection_top_SNPs) == 0) {
+        if (fast_mode || nrow(detection_top_SNPs) == 0) {
           return(NULL)
         } else {
           return(detection_top_SNPs)
@@ -587,9 +637,10 @@ BootstrapEQTL <- function(
                                  estimation_cis_assocs[, list(gene, snps, estimation_beta=beta)],
                                  by=c("gene", "snps"))
 
-        # Add the top detection SNPs table
-        sig_boot_assocs <- rbind(sig_boot_assocs, detection_top_SNPs, fill=TRUE)
-
+        if (!fast_mode) {
+          # Add the top detection SNPs table
+          sig_boot_assocs <- rbind(sig_boot_assocs, detection_top_SNPs, fill=TRUE)
+        }
         return(sig_boot_assocs)
       }, error=function(e) {
         return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
@@ -618,44 +669,46 @@ BootstrapEQTL <- function(
     boot_eGenes[snp_type == "eQTL"], eGenes, correction_type,
     ifelse(bootstrap_eSNPs == "top", TRUE, FALSE))
 
-  # Calculate frequency of top SNPs across all significant boostraps to
-  # report the best bootstrap eSNP (probable causal eSNP). In cases
-  # where multiple SNPs occur equally freuqently we need to determine if
-  # they are in perfect LD or not.
-  top_SNP_count <- boot_eGenes[snp_type == "top", .N, by=list(gene, snps)]
-  sig_boot_count <- boot_eGenes[snp_type == "top", list(boots=length(unique(bootstrap))), by=gene]
-  top_SNP <- merge(top_SNP_count, sig_boot_count, by="gene")
-  top_SNP[, prop_top_eSNP := N/boots]
-  top_SNP <- top_SNP[, .SD[which(prop_top_eSNP == max(prop_top_eSNP))], by=gene] # filter to the most frequent per gene
+  if (!fast_mode) {
+    # Calculate frequency of top SNPs across all significant boostraps to
+    # report the best bootstrap eSNP (probable causal eSNP). In cases
+    # where multiple SNPs occur equally freuqently we need to determine if
+    # they are in perfect LD or not.
+    top_SNP_count <- boot_eGenes[snp_type == "top", .N, by=list(gene, snps)]
+    sig_boot_count <- boot_eGenes[snp_type == "top", list(boots=length(unique(bootstrap))), by=gene]
+    top_SNP <- merge(top_SNP_count, sig_boot_count, by="gene")
+    top_SNP[, prop_top_eSNP := N/boots]
+    top_SNP <- top_SNP[, .SD[which(prop_top_eSNP == max(prop_top_eSNP))], by=gene] # filter to the most frequent per gene
 
-  # We can use the original cis_assocs table to determine whether top
-  # eSNPs are in perfect LD or not. If they are, they will have
-  # identical statistics, which we can detect using 'duplicated()'.
-  # By sorting the table, we can also pick up independent groups of SNPs
-  # in perfect LD that would be more difficult to detect using a
-  # correlation matrix on minor allele dosage
-  top_SNP <- merge(top_SNP[,list(gene, snps, prop_top_eSNP)],
-                    cis_assocs[,list(gene, snps, statistic, beta, pvalue)],
-                    by=c("gene", "snps"))
-  top_SNP <- top_SNP[order(beta)][order(statistic)][order(pvalue)][order(gene)]
-  top_SNP <- top_SNP[,list(snps, prop_top_eSNP, ld_prev=duplicated(.SD, by=c("statistic", "beta", "pvalue"))), by=gene]
-  # Assign each distinct block a number so we can collapse information
-  top_SNP[, snp_block := NA_real_]
-  block <- 0
-  for (ii in top_SNP[,.I]) {
-    block <- ifelse(top_SNP[ii, ld_prev], block, block + 1)
-    top_SNP[ii, snp_block := block]
+    # We can use the original cis_assocs table to determine whether top
+    # eSNPs are in perfect LD or not. If they are, they will have
+    # identical statistics, which we can detect using 'duplicated()'.
+    # By sorting the table, we can also pick up independent groups of SNPs
+    # in perfect LD that would be more difficult to detect using a
+    # correlation matrix on minor allele dosage
+    top_SNP <- merge(top_SNP[,list(gene, snps, prop_top_eSNP)],
+                     cis_assocs[,list(gene, snps, statistic, beta, pvalue)],
+                     by=c("gene", "snps"))
+    top_SNP <- top_SNP[order(beta)][order(statistic)][order(pvalue)][order(gene)]
+    top_SNP <- top_SNP[,list(snps, prop_top_eSNP, ld_prev=duplicated(.SD, by=c("statistic", "beta", "pvalue"))), by=gene]
+    # Assign each distinct block a number so we can collapse information
+    top_SNP[, snp_block := NA_real_]
+    block <- 0
+    for (ii in top_SNP[,.I]) {
+      block <- ifelse(top_SNP[ii, ld_prev], block, block + 1)
+      top_SNP[ii, snp_block := block]
+    }
+
+    # Now summarise at gene level: where there are multiple SNPs that
+    # occurred with equal frequency across all bootstraps then SNPs in
+    # perfect LD will be separated by a "/" while independent SNPs
+    # or SNP blocks will be separated with a ";".
+    top_SNP <- top_SNP[, list(gene=unique(gene), prop_top_eSNP=unique(prop_top_eSNP),
+                              best_boot_eSNP=paste(snps, collapse="/")), by=snp_block]
+    top_SNP <- top_SNP[, list(best_boot_eSNP=paste(best_boot_eSNP, collapse=";"),
+                              prop_top_eSNP=unique(prop_top_eSNP)), by=gene]
+    eGenes <- merge(eGenes, top_SNP, by="gene", all.x=TRUE)
   }
-
-  # Now summarise at gene level: where there are multiple SNPs that
-  # occurred with equal frequency across all bootstraps then SNPs in
-  # perfect LD will be separated by a "/" while independent SNPs
-  # or SNP blocks will be separated with a ";".
-  top_SNP <- top_SNP[, list(gene=unique(gene), prop_top_eSNP=unique(prop_top_eSNP),
-                            best_boot_eSNP=paste(snps, collapse="/")), by=snp_block]
-  top_SNP <- top_SNP[, list(best_boot_eSNP=paste(best_boot_eSNP, collapse=";"),
-                            prop_top_eSNP=unique(prop_top_eSNP)), by=gene]
-  eGenes <- merge(eGenes, top_SNP, by="gene", all.x=TRUE)
 
   # Sort eGenes by significance
   eGenes <- eGenes[order(abs(statistic), decreasing=TRUE)][order(corrected_pval)]

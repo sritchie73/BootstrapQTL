@@ -8,16 +8,24 @@
 ### @param global multiple testing correction method to us across all genes.
 ### @param eSNPs optional table specifying eSNPs to use for each gene rather
 ###        than the top-SNP for global multiple testing correction
+### @param snps_per_gene a data.table providing the number of cis SNPs for
+###        each gene.
 ###
 ### @return a data.table containing only significant eGenes and their top SNP
-get_eGenes <- function(cis_assocs, local, global,  eSNPs) {
+get_eGenes <- function(cis_assocs, local, global, eSNPs, snps_per_gene=NULL) {
   # Suppress CRAN notes about data.table columns
   corrected_pval <- NULL
   pvalue <- NULL
   gene <- NULL
   statistic <- NULL
 
-  cis_assocs[, corrected_pval := adjust_p(pvalue, method=local), by=gene]
+  if (!is.null(snps_per_gene)) {
+    setkey(snps_per_gene, "n_snps")
+    cis_assocs <- merge(cis_assocs, snps_per_gene, by="gene")
+    cis_assocs[, corrected_pval := adjust_p(pvalue, method=local, N=unique(n_snps)), by=gene]
+  } else {
+    cis_assocs[, corrected_pval := adjust_p(pvalue, method=local), by=gene]
+  }
 
   if (!missing(eSNPs)) {
     eGenes <- merge(cis_assocs, eSNPs, by=c("gene", "snps"))
@@ -35,10 +43,10 @@ get_eGenes <- function(cis_assocs, local, global,  eSNPs) {
 }
 
 ### Adjust p-values for multiple tests
-adjust_p <- function(pvals, method) {
+adjust_p <- function(pvals, method, N=NULL) {
   if (method == "qvalue") {
     qvalue::qvalue(pvals)$qvalues
   } else {
-    p.adjust(pvals, method)
+    p.adjust(pvals, method, n=ifelse(is.null(N), length(pvals), N))
   }
 }

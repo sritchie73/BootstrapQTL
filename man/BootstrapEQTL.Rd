@@ -9,7 +9,7 @@ BootstrapEQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   bootstrap_file_directory = NULL, cisDist = 1e+06,
   local_correction = "bonferroni", global_correction = "fdr",
   bootstrap_eSNPs = "discovery", correction_type = "shrinkage",
-  errorCovariance = numeric(), useModel = modelLINEAR)
+  fast_mode = FALSE, errorCovariance = numeric(), useModel = modelLINEAR)
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -87,6 +87,14 @@ by eQTL analysis in the bootstrap detection group.}
 \item{correction_type}{\code{character}. One of "shrinkage", "out_of_sample"
 or "weighted". Determines which Winner's Curse correction method is
 used (see Details).}
+
+\item{fast_mode}{\code{logical}. If \code{bootstrap_eSNPs = "discovery"} then
+setting \code{fast_mode = TRUE} will dramatically speed up the bootstrap
+procedure by restricting the analysis to the top SNP for each gene in
+the MatrixEQTL analysis performed prior to the bootstrap procedure. This
+means the collation of top SNPs across bootstraps is skipped, and the
+returned table will not have the \code{'best_boot_eSNP'} and
+\code{'prop_top_eSNP'} columns.}
 
 \item{errorCovariance}{\code{numeric matrix} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
 specifying the error covariance.}
