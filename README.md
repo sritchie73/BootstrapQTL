@@ -1,11 +1,9 @@
-# BootstrapEQTL
-##### Bootstrap cis-eQTL method that correct's for The Winner's Curse
+# BootstrapQTL
+##### Bootstrap QTL mapping method that correct's for The Winner's Curse
 
-BootstrapEQTL extends the [MatrixEQTL](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/) 
-package by performing hierarchical multiple testing correction that controls
-the eGene false discovery rate at 5\% and provides accurate eQTL effect sizes 
-for significant eGenes by performing a bootstrap procedure that corrects for the overestimation of effect sizes
-("The Winner's Curse effect").
+BootstrapQTL is a QTL mapping tool that uses a fast bootstrap procedure 
+to correct for the overestimation of effect sizes arising from the bias
+introduced by lead-SNP selection ("The Winner's Curse effect").
 
 ## Installation
 
@@ -19,14 +17,15 @@ install_github("InouyeLab/BootstrapEQTL")
 
 ## Package tutorial
 
-Bootstrap EQTL requires data to be loaded into R as per the 
+BootstrapQTL makes use of the [MatrixEQTL](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/)
+package and accordinlgy requires data to be loaded into R as per the 
 [MatrixEQTL tutorial](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/runit.html).
 The following code shows an example of loading genotype data, gene 
 expression data, covariates data, snp position data, and gene position
 data using the MatrixEQTL package example dataset:
 
 ```{r}
-library(BootstrapEQTL)
+library(BootstrapQTL)
 
 # Locations for example data from the MatrixEQTL package
 base.dir = find.package('MatrixEQTL');
@@ -88,8 +87,8 @@ Once the data has been loaded into R the BootstrapEQTL analysis can be
 run with a single command:
 
 ```{r}
-# Run the BootstrapEQTL analysis
-eGenes <- BootstrapEQTL(snps, gene, snpspos, genepos,
+# Run the BootstrapQTL analysis
+eGenes <- BootstrapQTL(snps, gene, snpspos, genepos,
                         n_bootstraps=200, n_cores=2,
                         eGene_detection_file_name = "cis_eQTL_associations.txt",
                         bootstrap_file_directory = "bootstrap_analyses/")

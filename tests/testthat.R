@@ -1,4 +1,4 @@
 library(testthat)
-library(BootstrapEQTL)
+library(BootstrapQTL)
 
-test_check("BootstrapEQTL")
+test_check("BootstrapQTL")

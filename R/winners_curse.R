@@ -8,15 +8,15 @@
 ###        Must be TRUE when bootstrap_eSNP is "top".
 correct_winners_curse <- function(boot_eGenes, eGenes, estimator="shrinkage", force_sign=FALSE) {
   # CRAN NOTE suppression:
-  bootstrap <- NULL
-  corrected_beta <- NULL
-  corrected_pval <- NULL
-  correction_boots <- NULL
+  gene <- NULL
   detection_beta <- NULL
   estimation_beta <- NULL
-  gene <- NULL
+  bootstrap <- NULL
   nominal_beta <- NULL
   winners_curse <- NULL
+  corrected_beta <- NULL
+  correction_boots <- NULL
+  corrected_pval <- NULL
 
   effect_sizes <- merge(boot_eGenes[,list(gene, detection_beta, estimation_beta, bootstrap)],
                         eGenes[,list(gene, nominal_beta)], by="gene")
@@ -44,7 +44,7 @@ correct_winners_curse <- function(boot_eGenes, eGenes, estimator="shrinkage", fo
   }
   effect_sizes[, winners_curse := nominal_beta - corrected_beta]
 
-  eGenes <- merge(eGenes, effect_sizes[,list(gene, winners_curse, corrected_beta, correction_boots)], by="gene")
+  eGenes <- merge(eGenes, effect_sizes[,list(gene, winners_curse, corrected_beta, correction_boots)], by="gene", all.x=TRUE)
   eGenes[corrected_pval < 0.05 & is.na(correction_boots), correction_boots := 0] # In case no bootstraps are significant
 
   return(eGenes)

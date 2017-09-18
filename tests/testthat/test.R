@@ -1,6 +1,6 @@
-context("BootstrapEQTL")
+context("BootstraQTL")
 
-test_that("Run BootstrapEQTL", {
+test_that("Run BootstrapQTL", {
   # Toy data locations
   base.dir = find.package('MatrixEQTL');
   SNP_file_name = paste(base.dir, "/data/SNP.txt", sep="");
@@ -44,13 +44,13 @@ test_that("Run BootstrapEQTL", {
 
   outfile <- tempfile()
   outdir <- tempdir()
-  eGenes <- BootstrapEQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2,
+  eGenes <- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2,
                           eGene_detection_file_name = outfile,
                           bootstrap_file_directory = outdir)
   unlink(outfile)
   unlink(outdir, recursive=TRUE)
 
-  eGenes <- BootstrapEQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2)
+  eGenes <- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2)
 })
 
 

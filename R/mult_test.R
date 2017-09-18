@@ -14,18 +14,18 @@
 ### @return a data.table containing only significant eGenes and their top SNP
 get_eGenes <- function(cis_assocs, local, global, eSNPs, snps_per_gene=NULL) {
   # Suppress CRAN notes about data.table columns
-  corrected_pval <- NULL
+  local_pval <- NULL
   pvalue <- NULL
+  n_snps <- NULL
   gene <- NULL
   statistic <- NULL
-  n_snps <- NULL
+  global_pval <- NULL
 
   if (!is.null(snps_per_gene)) {
-    setkey(snps_per_gene, "n_snps")
     cis_assocs <- merge(cis_assocs, snps_per_gene, by="gene")
-    cis_assocs[, corrected_pval := adjust_p(pvalue, method=local, N=unique(n_snps)), by=gene]
+    cis_assocs[, local_pval := adjust_p(pvalue, method=local, N=unique(n_snps)), by=gene]
   } else {
-    cis_assocs[, corrected_pval := adjust_p(pvalue, method=local), by=gene]
+    cis_assocs[, local_pval := adjust_p(pvalue, method=local), by=gene]
   }
 
   if (!missing(eSNPs)) {
@@ -35,9 +35,9 @@ get_eGenes <- function(cis_assocs, local, global, eSNPs, snps_per_gene=NULL) {
     # the smallest pvalue, make sure the one with the biggest T-statistic
     # is selected
     cis_assocs <- cis_assocs[order(abs(statistic), decreasing=TRUE)]
-    eGenes <- cis_assocs[, .SD[which.min(corrected_pval)], by="gene"] # take row with best p-value per gene
+    eGenes <- cis_assocs[, .SD[which.min(local_pval)], by="gene"] # take row with best p-value per gene
   }
-  eGenes[, corrected_pval := adjust_p(corrected_pval, method=global)] # global gene correction
+  eGenes[, global_pval := adjust_p(local_pval, method=global)] # global gene correction
 
 
   return(eGenes)

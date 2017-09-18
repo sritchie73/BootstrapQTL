@@ -64,7 +64,7 @@ setupParallel <- function(nCores, verbose, reporterCore) {
       cl <- parallel::makeCluster(nCores, type="PSOCK")
       doParallel::registerDoParallel(cl)
 
-      if (verbose) cat("Registering ", workerCores, " cores for bootstrap procedure.\n")
+      if (verbose) cat("Registering", workerCores, "cores for bootstrap procedure.\n")
       if (workerCores > parallel::detectCores()) {
         stop(
           "Requested number of cores (", workerCores, ") is higher than the ",
@@ -90,7 +90,7 @@ setupParallel <- function(nCores, verbose, reporterCore) {
         nCores <- nCores + 1
       }
       doMC::registerDoMC(nCores)
-      if (verbose) cat("Registering ", workerCores, " cores for bootstrap procedure.\n")
+      if (verbose) cat("Registering", workerCores, "cores for bootstrap procedure.\n")
       if ((nCores - 1) > parallel::detectCores()) {
         stop(
           "Requested number of cores (", workerCores, ") is higher than the ",
