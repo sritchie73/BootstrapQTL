@@ -342,11 +342,6 @@ BootstrapQTL <- function(
   statistic <- NULL
   snp_type <- NULL
   bootstrap <- NULL
-  prop_top_eSNP <- NULL
-  boots <- NULL
-  snp_block <- NULL
-  ld_prev <- NULL
-  best_boot_eSNP <- NULL
 
   ##--------------------------------------------------------------------
   ## Check inputs will be OK first - want function to crash at the start
@@ -454,11 +449,11 @@ BootstrapQTL <- function(
   ## Set up and check options that need to be reset at end of the
   ## function
   ##--------------------------------------------------------------------
-
+  on.exit({ cat("Restoring global environment...\n") })
   # stringsAsFactors=TRUE causes crashes here
   saf <- options("stringsAsFactors")[[1]]
   options(stringsAsFactors=FALSE)
-  on.exit(options(stringsAsFactors=saf))
+  on.exit(options(stringsAsFactors=saf), add=TRUE)
 
   # Check if the user has already loaded data.table: if not, load it and
   # make sure we return the table as a data.frame
@@ -500,6 +495,12 @@ BootstrapQTL <- function(
   cis_assocs <- get_cis_assocs(eQTLs, eGene_detection_file_name)
   eGenes <- get_eGenes(cis_assocs, local_correction, global_correction)
 
+  ##--------------------------------------------------------------------
+  ## Identify cases where multiple SNPs are the top eSNP
+  ##--------------------------------------------------------------------
+  cat("Identifying SNPs in perfect LD with lead eSNPs...\n")
+  eGenes <- get_eSNPs(cis_assocs, eGenes, collapse=TRUE)
+
   if (eGenes[global_pval < 0.05, .N] == 0) {
     warning("No significant eGenes detected")
     return(eGenes)
@@ -523,7 +524,7 @@ BootstrapQTL <- function(
 
   # Get list of significant eGenes and their eSNPs for later
   significant_eGenes <- eGenes[global_pval < 0.05, gene]
-  lead_eSNPs <- eGenes[global_pval < 0.05, snps]
+  lead_eSNPs <- eGenes[global_pval < 0.05, gsub("/.*", "", snps)] # just take first if in perfect ld
 
   # Filter to significant eGenes
   gene_boot <- gene$Clone()
@@ -563,7 +564,7 @@ BootstrapQTL <- function(
   boot_eGenes <- foreach(id_boot = seq_len(n_bootstraps),
                          .inorder = FALSE,
                          .export = boot_objs, .noexport=other_objs,
-                         .init = data.table(error=character(0), error_message=character(0)),
+                         .init = data.table(error=character(0), error_type=character(0)),
                          .combine = rbind_dt  # rbind with FILL = TRUE as default
   ) %dopar% {
     ##--------------------------------------------------------------------
@@ -625,7 +626,10 @@ BootstrapQTL <- function(
       # Filter to genes that pass the nominal local correction threshold
       detection_eQTL_SNPs <- detection_eQTL_SNPs[local_pval < bootstrap_threshold]
       # Filter columns
-      detection_eQTL_SNPs <- detection_eQTL_SNPs[, list(gene, snps, detection_beta=beta, snp_type="eQTL", bootstrap=id_boot)]
+      detection_eQTL_SNPs <- detection_eQTL_SNPs[, list(gene, snps, detection_beta=beta)]
+      # Add identifier columns
+      detection_eQTL_SNPs[, snp_type := "mapping"]
+      detection_eQTL_SNPs[, bootstrap := id_boot]
 
       if (collate_top_snps) {
         # We also want to collect statistics about the top eSNP in the detection group
@@ -635,13 +639,16 @@ BootstrapQTL <- function(
         # Get eSNPs with identical statisticis due to perfect LD in bootstrap detection group
         detection_top_SNPs <- get_eSNPs(detection_cis_assocs, detection_top_SNPs, collapse=FALSE)
         # Filter columns
-        detection_top_SNPs <- detection_top_SNPs[, list(gene, snps, snp_type="top", bootstrap=id_boot)]
+        detection_top_SNPs <- detection_top_SNPs[, list(gene, snps)]
+        # Add identifier columns
+        detection_top_SNPs[, snp_type := "top"]
+        detection_top_SNPs[, bootstrap := id_boot]
       }
 
       # If there are no significant eGenes in this bootstrap we can move
       # to the next one
       if(nrow(detection_eQTL_SNPs) == 0) {
-        if (!collate_top_snps || nrow(detection_top_SNPs) == 0) {
+        if (!(collate_top_snps) || nrow(detection_top_SNPs) == 0) {
           return(NULL)
         } else {
           return(detection_top_SNPs)
@@ -707,7 +714,7 @@ BootstrapQTL <- function(
 
         return(sig_boot_assocs)
       }, error=function(e) {
-        if (exists("detection_top_SNPs") && detection_top_SNPs[,bootstrap == id_boot]) {
+        if (exists("detection_top_SNPs") && nrow(detection_top_SNPs) > 0 && detection_top_SNPs[,bootstrap] == id_boot) {
           return(rbind_dt(detection_top_SNPs, data.table(bootstrap=id_boot, error=e$message, error_type="estimation")))
         } else {
           return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
@@ -721,27 +728,21 @@ BootstrapQTL <- function(
   ##--------------------------------------------------------------------
   ## Collate bootstrap errors
   ##--------------------------------------------------------------------
-
   # Report failed bootstraps if any
   if (boot_eGenes[,sum(!is.na(error))] > 0) {
     errors <- boot_eGenes[!is.na(error), .N, by=list(error, error_type)]
     for (ii in errors[,.I]) {
       warning(errors[ii, N], "/", n_bootstraps, " bootstraps failed with",
               " error '", errors[ii, error], "' in the bootstrap ",
-              errors[ii, error_type], " group.")
+              errors[ii, error_type], " group.", immediate.=TRUE)
     }
   }
   boot_eGenes <- boot_eGenes[is.na(error)]
 
   ##--------------------------------------------------------------------
-  ## Identify cases where multiple SNPs are the top eSNP
-  ##--------------------------------------------------------------------
-  cat("Identifying SNPs in perfect LD with lead eSNPs...\n")
-  eGenes <- get_eSNPs(cis_assocs, eGenes, collapse=TRUE)
-
-  ##--------------------------------------------------------------------
   ## Remove effect of the winners curse based on bootstrap estimates
   ##--------------------------------------------------------------------
+
   cat("Removing winner's curse...\n")
   # Relabel columns
   eGenes <- eGenes[,list(gene, top_snp=snps, statistic, nominal_beta=beta,
@@ -752,7 +753,7 @@ BootstrapQTL <- function(
   # fact that different eSNPs with anti-correlated minor allele frequencies
   # may have been the top SNP at each bootstrap
   eGenes <- correct_winners_curse(
-    boot_eGenes[snp_type == "eQTL"], eGenes, correction_type,
+    boot_eGenes[snp_type == "mapping"], eGenes, correction_type,
     force_sign=ifelse(bootstrap_eSNPs == "top", TRUE, FALSE))
 
   ##--------------------------------------------------------------------
@@ -760,44 +761,8 @@ BootstrapQTL <- function(
   ##--------------------------------------------------------------------
 
   if (collate_top_snps) {
-    # Calculate frequency of top SNPs across all significant boostraps to
-    # report the best bootstrap eSNP (probable causal eSNP). In cases
-    # where multiple SNPs occur equally freuqently we need to determine if
-    # they are in perfect LD or not.
-    top_SNP_count <- boot_eGenes[snp_type == "top", .N, by=list(gene, snps)] # In how many bootstraps does each gene-SNP appear?
-    sig_boot_count <- boot_eGenes[snp_type == "top", list(boots=length(unique(bootstrap))), by=gene] # how many significant bootstraps for each gene?
-    top_SNP <- merge(top_SNP_count, sig_boot_count, by="gene")
-    top_SNP[, prop_top_eSNP := N/boots] # Divide the occurance of each gene-SNP pair by the number of significant bootstraps for that gene.
-    top_SNP <- top_SNP[, .SD[which(prop_top_eSNP == max(prop_top_eSNP))], by=gene] # filter to the most frequent per gene
-
-    # We can use the original cis_assocs table to determine whether top
-    # eSNPs are in perfect LD or not. If they are, they will have
-    # identical statistics, which we can detect using 'duplicated()'.
-    # By sorting the table, we can also pick up independent groups of SNPs
-    # in perfect LD that would be more difficult to detect using a
-    # correlation matrix on minor allele dosage
-    top_SNP <- merge(top_SNP[,list(gene, snps, prop_top_eSNP)],
-                     cis_assocs[,list(gene, snps, statistic, beta, pvalue)],
-                     by=c("gene", "snps"))
-    top_SNP <- top_SNP[order(beta)][order(statistic)][order(pvalue)][order(gene)]
-    top_SNP <- top_SNP[,list(snps, prop_top_eSNP, ld_prev=duplicated(.SD, by=c("statistic", "beta", "pvalue"))), by=gene]
-    # Assign each distinct block a number so we can collapse information
-    top_SNP[, snp_block := NA_real_]
-    block <- 0
-    for (ii in top_SNP[,.I]) {
-      block <- ifelse(top_SNP[ii, ld_prev], block, block + 1)
-      top_SNP[ii, snp_block := block]
-    }
-
-    # Now summarise at gene level: where there are multiple SNPs that
-    # occurred with equal frequency across all bootstraps then SNPs in
-    # perfect LD will be separated by a "/" while independent SNPs
-    # or SNP blocks will be separated with a ";".
-    top_SNP <- top_SNP[, list(gene=unique(gene), prop_top_eSNP=unique(prop_top_eSNP),
-                              best_boot_eSNP=paste(snps, collapse="/")), by=snp_block]
-    top_SNP <- top_SNP[, list(best_boot_eSNP=paste(best_boot_eSNP, collapse=";"),
-                              prop_top_eSNP=unique(prop_top_eSNP)), by=gene]
-    eGenes <- merge(eGenes, top_SNP, by="gene", all.x=TRUE)
+    cat("Identifying lead SNPs in bootstrap analysis...\n")
+    eGenes <- get_bootstrap_lead_SNPs(boot_eGenes[snp_type == "top"], eGenes, cis_assocs)
   }
 
   # Sort eGenes by significance
@@ -808,5 +773,7 @@ BootstrapQTL <- function(
   if (!has.data.table) {
     eGenes <- as.data.frame(eGenes)
   }
+
+  on.exit({ cat("Done!\n") }, add=TRUE)
   return(eGenes)
 }

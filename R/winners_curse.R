@@ -18,34 +18,41 @@ correct_winners_curse <- function(boot_eGenes, eGenes, estimator="shrinkage", fo
   correction_boots <- NULL
   corrected_pval <- NULL
 
-  effect_sizes <- merge(boot_eGenes[,list(gene, detection_beta, estimation_beta, bootstrap)],
-                        eGenes[,list(gene, nominal_beta)], by="gene")
+  tryCatch({ # Failure condition: no significant bootstraps for any gene
+    effect_sizes <- merge(boot_eGenes[,list(gene, detection_beta, estimation_beta, bootstrap)],
+                          eGenes[,list(gene, nominal_beta)], by="gene")
 
-  if (force_sign) {
-    effect_sizes[, detection_beta := abs(detection_beta) * sign(nominal_beta)]
-    effect_sizes[, estimation_beta := abs(estimation_beta) * sign(nominal_beta)]
-  }
+    if (force_sign) {
+      effect_sizes[, detection_beta := abs(detection_beta) * sign(nominal_beta)]
+      effect_sizes[, estimation_beta := abs(estimation_beta) * sign(nominal_beta)]
+    }
 
-  if (estimator == "shrinkage") {
-    effect_sizes <- effect_sizes[, list(
-      corrected_beta=unique(nominal_beta) - mean(detection_beta - estimation_beta),
-      correction_boots=.N, nominal_beta=unique(nominal_beta)
-    ), by=gene]
-  } else if (estimator == "out_of_sample") {
-    effect_sizes <- effect_sizes[, list(
-      corrected_beta=mean(estimation_beta),
-      correction_boots=.N, nominal_beta=unique(nominal_beta)
-    ), by=gene]
-  } else if (estimator == "weighted") {
-    effect_sizes <- effect_sizes[, list(
-      corrected_beta=0.368*unique(nominal_beta) + 0.632 * mean(estimation_beta),
-      correction_boots=.N, nominal_beta=unique(nominal_beta)
-    ), by=gene]
-  }
-  effect_sizes[, winners_curse := nominal_beta - corrected_beta]
+    if (estimator == "shrinkage") {
+      effect_sizes <- effect_sizes[, list(
+        corrected_beta=unique(nominal_beta) - mean(detection_beta - estimation_beta),
+        correction_boots=.N, nominal_beta=unique(nominal_beta)
+      ), by=gene]
+    } else if (estimator == "out_of_sample") {
+      effect_sizes <- effect_sizes[, list(
+        corrected_beta=mean(estimation_beta),
+        correction_boots=.N, nominal_beta=unique(nominal_beta)
+      ), by=gene]
+    } else if (estimator == "weighted") {
+      effect_sizes <- effect_sizes[, list(
+        corrected_beta=0.368*unique(nominal_beta) + 0.632 * mean(estimation_beta),
+        correction_boots=.N, nominal_beta=unique(nominal_beta)
+      ), by=gene]
+    }
+    effect_sizes[, winners_curse := nominal_beta - corrected_beta]
 
-  eGenes <- merge(eGenes, effect_sizes[,list(gene, winners_curse, corrected_beta, correction_boots)], by="gene", all.x=TRUE)
-  eGenes[corrected_pval < 0.05 & is.na(correction_boots), correction_boots := 0] # In case no bootstraps are significant
+    eGenes <- merge(eGenes, effect_sizes[,list(gene, winners_curse, corrected_beta, correction_boots)], by="gene", all.x=TRUE)
+  }, error=function(e) {
+    warning("No significant eGenes were significant in any bootstrap", immediate.=TRUE)
+    eGenes[, winners_curse := NA_real_]
+    eGenes[, corrected_beta := NA_real_]
+    eGenes[, correction_boots := NA_real_]
+  })
+  eGenes[corrected_pval < 0.05 & is.na(correction_boots), correction_boots := 0] # For genes where no bootstraps are significant
 
   return(eGenes)
 }
