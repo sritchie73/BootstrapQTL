@@ -9,8 +9,9 @@ BootstrapQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   bootstrap_file_directory = NULL, cisDist = 1e+06,
   local_correction = "bonferroni", global_correction = "fdr",
   bootstrap_eSNPs = "discovery", correction_type = "shrinkage",
-  collate_top_snps = ifelse(bootstrap_eSNPs == "top", TRUE, FALSE),
-  errorCovariance = numeric(), useModel = modelLINEAR)
+  collate_top_snps = ifelse(bootstrap_eSNPs == "discovery" && local_correction
+  == "bonferroni", FALSE, TRUE), errorCovariance = numeric(),
+  useModel = modelLINEAR)
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -92,11 +93,12 @@ see Details).}
 or "weighted". Determines which Winner's Curse correction method is
 used (see Details).}
 
-\item{collate_top_snps}{\code{logical}. If \code{'TRUE'} data on the most
-frequent top SNP per eGene across all bootstraps is recorded (see Details).
-Note setting this parameter to TRUE when \code{'bootstrap_eSNPs = "discovery"'}
-will make the bootstrap procedure very slow since it requires computation
-of all \emph{cis} associations at each eGene.}
+\item{collate_top_snps}{\code{logical}. Should the collation of the
+most frequent top SNP per eGene be skipped? Allows fast bootstrap
+by allowing each bootstrap to test only the lead SNP-gene pairs from
+the eGene detection analysis. Only works given the default package
+settings: \code{'bootstrap_eSNPs="discovery"'} and \code{'local_correction="bonferroni"'}
+or (\code{'local_correction="none"'}).}
 
 \item{errorCovariance}{\code{numeric matrix} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
 specifying the error covariance.}
@@ -202,14 +204,18 @@ Although the package interface and documentation describe the use of
  the winner's curse correction if the corresponding eGene is
  significant in the bootstrap detection group. Two approaches are
  provided for measuring eGene significance and effect sizes in the
- bootstrap groups: (1) using the SNP in each bootstrap detection group
- with the smallest p-value ("top" in \code{'bootstrap_eSNPs'}), and
- (2) using the SNP with the smallest p-value in the eGene detection
- analysis performed prior to the bootstrap procedure ("discovery" in
- \code{'bootstrap_eSNPs'}). In both cases bootstraps are only
- considered in the final winner's curse calculation where the gene-SNP
- assocation is significant in the bootstrap detection group (see next
- section).
+ bootstrap groups: (1) using the SNP in each bootstrap detection
+ group with the smallest p-value ("top" in \code{'bootstrap_eSNPs'}),
+ and (2) using the SNP with the smallest p-value in the eGene
+ detection analysis performed prior to the bootstrap procedure
+ ("discovery" in \code{'bootstrap_eSNPs'}). In both cases bootstraps
+ are only considered in the final winner's curse calculation where
+ the gene-SNP assocation is significant in the bootstrap detection
+ group. Each gene-SNP pair is considered significant if its locally
+ corrected bootstrap detection group P-value is smaller than the
+ locally corrected p-value in the eGene disocvery analysis
+ corresponding to the global multiple testing correction threshold of
+ 0.05 in the eGene discovery analysis.
 
  The default settings, \code{'correction_type = "shrinkage"'} and
  \code{'bootstrap_eSNPs = "discovery"'} provided the most accurate
@@ -227,22 +233,6 @@ Although the package interface and documentation describe the use of
  bootstraps specified in \code{'n_bootstraps'}. The number of
  bootstraps that were significant for each eGene is reported in the
  \code{'correction_boots'} column of the returned table.
- }
- \subsection{Bootstrap inclusion}{
- The bootstrap significance threshold that determines the inclusion
- of any bootstrap to the final winners curse calculation of each
- gene-SNP pair is separate to the multiple testing correction
- procedure used for eGene discovery. It is calibrated to lead to
- optimal bootstrap inclusion for the most accurate winner's curse
- correction rather than for controlling eGene FDR.
-
- Gene-SNP associations at each bootstrap are bonferroni adjusted for
- the number of \emph{cis}-SNPs at each gene, and considered
- significant if they are smaller than the bootstrap significance
- threshold. The bootstrap significance threshold is determined prior
- to the bootstrap procedure. It is the local-Bonferroni threshold
- corresponding to the global multiple testing correction threshold
- of 0.05 in the eGene discovery analysis.
  }
  \subsection{Collating the most frequent top bootstrap SNP}{
  In addition to correcting for the Winner's Curse, the bootstrap
