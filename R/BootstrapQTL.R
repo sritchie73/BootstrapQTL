@@ -2,7 +2,7 @@
 #'
 #' Performs cis-QTL mapping using MatrixEQTL then performs a bootstrap
 #' analysis to obtain accurate effect size estimates for eGenes by
-#' correcting for the "Winner's Curse". This approach can be applied
+#' correcting for the "Winner's Curse".
 #'
 #' @details
 #'  \subsection{EGene detection:}{
@@ -323,7 +323,6 @@ BootstrapQTL <- function(
   id_boot <- NULL
   local_pval <- NULL
   corrected_pval <- NULL
-  id_boot <- NULL
   error <- NULL
   error_type <- NULL
   N <- NULL
@@ -434,6 +433,9 @@ BootstrapQTL <- function(
   if (length(collate_top_snps) > 1 || !is.finite(collate_top_snps) || !is.logical(collate_top_snps)) {
     stop("'collate_top_snps' must either be TRUE or FALSE")
   }
+  if (!collate_top_snps && bootstrap_eSNPs == "top") {
+    warning("'collate_top_snps' ignored when 'bootstrap_eSNPs = \"top\"'", immediate.=TRUE)
+  }
 
   ##--------------------------------------------------------------------
   ## Set up and check options that need to be reset at end of the
@@ -516,7 +518,7 @@ BootstrapQTL <- function(
   genepos_boot <- genepos[genepos[,1] %in% significant_eGenes, ]
   snps_per_gene <- snps_per_gene[gene %in% significant_eGenes]
 
-  # Should we collate the most frequent top SNP across bootstraps?
+  # Do we need to run the analysis on all cis-SNPs?
   collate_top_snps <- collate_top_snps || bootstrap_eSNPs == "top"
 
   # If we don't need to determine the top SNP at each bootstrap, we can
@@ -533,7 +535,9 @@ BootstrapQTL <- function(
   boot_objs <-  c("cvrt", "snps_boot", "gene_boot", "snpspos",
                   "genepos_boot", "bootstrap_file_directory",
                   "snps_per_gene", "significant_eGenes", "lead_eSNPs",
-                  "bootstrap_threshold", "collate_top_snps")
+                  "bootstrap_threshold", "collate_top_snps",
+                  "errorCovariance", "cisDist", "useModel",
+                  "bootstrap_eSNPs")
   other_objs <- ls()[!(ls() %in% boot_objs)]
 
   ##--------------------------------------------------------------------
@@ -589,7 +593,7 @@ BootstrapQTL <- function(
         errorCovariance = errorCovariance,
         pvOutputThreshold.cis = 1,
         snpspos = snpspos,
-        genepos = genepos,
+        genepos = genepos_boot,
         cisDist = cisDist,
         output_file_name=NULL,
         output_file_name.cis=detection_file,
@@ -612,9 +616,9 @@ BootstrapQTL <- function(
 
       if (collate_top_snps) {
         # We also want to collect statistics about the top eSNP in the detection group
-        detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, global_correction)
+        detection_top_SNPs <- get_eGenes(detection_cis_assocs, "bonferroni", "none", snps_per_gene = snps_per_gene)
         # Filter to significant eGenes
-        detection_top_SNPs <- detection_top_SNPs[corrected_pval < 0.05] # & gene %in% eGenes[corrected_pval < 0.05, gene]]
+        detection_top_SNPs <- detection_top_SNPs[local_pval < bootstrap_threshold]
         # Get eSNPs with identical statisticis due to perfect LD in bootstrap detection group
         detection_top_SNPs <- get_eSNPs(detection_cis_assocs, detection_top_SNPs, collapse=FALSE)
         # Filter columns
@@ -669,7 +673,7 @@ BootstrapQTL <- function(
           errorCovariance = errorCovariance,
           pvOutputThreshold.cis = 1,
           snpspos = snpspos,
-          genepos = genepos,
+          genepos = genepos_boot,
           cisDist = cisDist,
           output_file_name=NULL,
           output_file_name.cis=estimation_file,
@@ -687,9 +691,14 @@ BootstrapQTL <- function(
           # Add the top detection SNPs table
           sig_boot_assocs <- rbind(sig_boot_assocs, detection_top_SNPs, fill=TRUE)
         }
+
         return(sig_boot_assocs)
       }, error=function(e) {
-        return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
+        if (exists("detection_top_SNPs") && detection_top_SNPs[,bootstrap == id_boot]) {
+          return(rbind_dt(detection_top_SNPs, data.table(bootstrap=id_boot, error=e$message, error_type="estimation")))
+        } else {
+          return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
+        }
       })
     }, error=function(e) {
       return(data.table(bootstrap=id_boot, error=e$message, error_type="detection"))
@@ -742,10 +751,10 @@ BootstrapQTL <- function(
     # report the best bootstrap eSNP (probable causal eSNP). In cases
     # where multiple SNPs occur equally freuqently we need to determine if
     # they are in perfect LD or not.
-    top_SNP_count <- boot_eGenes[snp_type == "top", .N, by=list(gene, snps)]
-    sig_boot_count <- boot_eGenes[snp_type == "top", list(boots=length(unique(bootstrap))), by=gene]
+    top_SNP_count <- boot_eGenes[snp_type == "top", .N, by=list(gene, snps)] # In how many bootstraps does each gene-SNP appear?
+    sig_boot_count <- boot_eGenes[snp_type == "top", list(boots=length(unique(bootstrap))), by=gene] # how many significant bootstraps for each gene?
     top_SNP <- merge(top_SNP_count, sig_boot_count, by="gene")
-    top_SNP[, prop_top_eSNP := N/boots]
+    top_SNP[, prop_top_eSNP := N/boots] # Divide the occurance of each gene-SNP pair by the number of significant bootstraps for that gene.
     top_SNP <- top_SNP[, .SD[which(prop_top_eSNP == max(prop_top_eSNP))], by=gene] # filter to the most frequent per gene
 
     # We can use the original cis_assocs table to determine whether top

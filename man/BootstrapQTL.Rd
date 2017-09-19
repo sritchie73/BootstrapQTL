@@ -133,7 +133,7 @@ A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
 \description{
 Performs cis-QTL mapping using MatrixEQTL then performs a bootstrap
 analysis to obtain accurate effect size estimates for eGenes by
-correcting for the "Winner's Curse". This approach can be applied
+correcting for the "Winner's Curse".
 }
 \details{
 \subsection{EGene detection:}{
