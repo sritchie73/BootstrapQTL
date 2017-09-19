@@ -1,7 +1,7 @@
 # BootstrapQTL
-##### Bootstrap QTL mapping method that correct's for The Winner's Curse
+## A *cis*-QTL mapping method that corrects for the Winner's Curse
 
-BootstrapQTL is a QTL mapping tool that uses a fast bootstrap procedure 
+BootstrapQTL is a cis-QTL mapping tool that uses a fast bootstrap procedure 
 to correct for the overestimation of effect sizes arising from the bias
 introduced by lead-SNP selection ("The Winner's Curse effect").
 
@@ -12,14 +12,25 @@ from this GitHub repository:
 
 ```{r}
 library(devtools)
-install_github("InouyeLab/BootstrapEQTL")
+install_github("InouyeLab/BootstrapQTL")
 ```
+
+A future release on CRAN is planned. 
 
 ## Package tutorial
 
+The following package tutorial and code exampl
+
 BootstrapQTL makes use of the [MatrixEQTL](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/)
-package and accordinlgy requires data to be loaded into R as per the 
+package and therefore requires data to be loaded into R as per the 
 [MatrixEQTL tutorial](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/runit.html).
+
+The following script, package interface, and package documentation all
+describe the use of BootstrapQTL for cis-eQTL mapping. However, this 
+approach and package can be applied for generally to any QTL study of
+quantitative traits with chromosomal positions, for example cis-QTL 
+studies of epigenetic modifications.
+
 The following code shows an example of loading genotype data, gene 
 expression data, covariates data, snp position data, and gene position
 data using the MatrixEQTL package example dataset:
@@ -93,3 +104,12 @@ eGenes <- BootstrapQTL(snps, gene, snpspos, genepos,
                         eGene_detection_file_name = "cis_eQTL_associations.txt",
                         bootstrap_file_directory = "bootstrap_analyses/")
 ```
+
+Analysis of different types of  molecular data procedes in a similar 
+fashion as shown above. Simply load in the quantitative trait data into 
+R as shown above for the `gene` variable, then create and load a 
+`data.frame` of positional information as shown above for the `genepos`
+variable. If the molecular traits have a single genomic position, rather
+than spanning a range of base pairs, then you will need to duplicate 
+the trait position in the `genepos` `data.frame` (*i.e.* the `"left"`,
+and `"right"` columns will contain the same location).

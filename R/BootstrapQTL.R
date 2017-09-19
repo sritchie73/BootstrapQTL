@@ -1,10 +1,20 @@
 #' Bootstrap QTL analysis for accurate effect size estimation
 #'
 #' Performs cis-QTL mapping using MatrixEQTL then performs a bootstrap
-#' analysis to obtain accurate effect size estimates for eGenes by
-#' correcting for the "Winner's Curse".
+#' analysis to obtain unbiased effect size estimates for traits with
+#' significant evidence of genetic regulation correcting for the
+#' "Winner's Curse" arising from lead-SNP selection.
 #'
 #' @details
+#'  Although the package interface and documentation describe the use of
+#'  \code{BootstrapQTL} for \emph{cis}-eQTL mapping, the package can be
+#'  applied to any QTL study of quantitative traits with chromosomal
+#'  positions, for example \emph{cis}-QTL mapping of epigenetic
+#'  modifications. Any matrix of molecular trait data can be provided
+#'  to the \code{'gene'} argument provided a corresponding \code{'genepos'}
+#'  'data.frame' detailing the chromosomal positions of each trait is
+#'  provided.
+#'
 #'  \subsection{EGene detection:}{
 #'  Detection of significant eGenes is performed using a hieararchical
 #'  multiple testing correction procedure. At each gene, local multiple
@@ -169,6 +179,9 @@
 #'     \item 'left' describing the start position of the transcript.
 #'     \item 'right' describing the end position of the transcript.
 #'   }
+#'   If analysing a molecular phenotype that have a single chromosomal
+#'   position then the 'left' and 'right' columns should both contain
+#'   the same position.
 #' @param cvrt \code{\link[MatrixEQTL]{SlicedData}} object containing covariate
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
 #'   Argument can be ignored in the case of no covariates.

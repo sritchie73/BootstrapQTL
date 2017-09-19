@@ -1,15 +1,15 @@
 Package: BootstrapQTL
 Type: Package
-Title: Bootstrap cis-QTL method that correct's for The Winner's Curse
-Version: 0.4.0
+Title: Bootstrap cis-QTL method that corrects for The Winner's Curse
+Version: 0.4.1
 Authors@R: c(person(given="Qinqin", family="Huang", role=c("aut")),
     person(given="Scott", family="Ritchie", 
          email="sritchie73@gmail.com", role=c("aut", "cre")))
 BugReports: https://github.com/InouyeLab/bootstrapQTL/issues
-Description: Identifies significant eGenes and performs a boostrap 
-    procedure to obtain unbiased effect size estimates to correct for 
-    the "Winner's Curse" in eQTL 
-    studies.
+Description: Identifies molecular traits with significant evidence of
+  genetic regulation and performs a boostrap procedure to obtain 
+  unbiased effect size estimates to correct for the bias arising from
+  lead-SNP selection (The Winner's Curse).
 Depends:
   MatrixEQTL
 Imports:
