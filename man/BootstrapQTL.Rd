@@ -9,9 +9,7 @@ BootstrapQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   bootstrap_file_directory = NULL, cisDist = 1e+06,
   local_correction = "bonferroni", global_correction = "fdr",
   bootstrap_eSNPs = "discovery", correction_type = "shrinkage",
-  collate_top_snps = ifelse(bootstrap_eSNPs == "discovery" && local_correction
-  == "bonferroni", FALSE, TRUE), errorCovariance = numeric(),
-  useModel = modelLINEAR)
+  errorCovariance = numeric(), useModel = modelLINEAR)
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -93,13 +91,6 @@ see Details).}
 or "weighted". Determines which Winner's Curse correction method is
 used (see Details).}
 
-\item{collate_top_snps}{\code{logical}. Should the collation of the
-most frequent top SNP per eGene be skipped? Allows fast bootstrap
-by allowing each bootstrap to test only the lead SNP-gene pairs from
-the eGene detection analysis. Only works given the default package
-settings: \code{'bootstrap_eSNPs="discovery"'} and \code{'local_correction="bonferroni"'}
-or (\code{'local_correction="none"'}).}
-
 \item{errorCovariance}{\code{numeric matrix} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
 specifying the error covariance.}
 
@@ -129,10 +120,6 @@ A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
    \item{\code{'correction_boots':}}{The number of bootstraps that contributed to the estimation of
      the \code{winners_curse}, \emph{i.e.} the number of bootstraps in which the
      \code{top_snp}-\code{gene} pair was significant (see details)}
-   \item{\code{'best_boot_eSNP':}}{The SNP or SNPs that were most frequently the top eSNP in
-     the bootstrap procedure (see details).}
-   \item{\code{'prop_top_eSNP':}}{The proportion of bootstraps in which the \code{'best_boot_eSNP'}
-     was the top eSNP (see details).}
  }
 }
 \description{
@@ -233,41 +220,6 @@ Although the package interface and documentation describe the use of
  bootstraps specified in \code{'n_bootstraps'}. The number of
  bootstraps that were significant for each eGene is reported in the
  \code{'correction_boots'} column of the returned table.
- }
- \subsection{Collating the most frequent top bootstrap SNP}{
- In addition to correcting for the Winner's Curse, the bootstrap
- procedure can also collects statistics about which SNP(s) are the top
- SNP for each tested eGene in the bootstrapped detection group. This
- can differ from the top SNP from the initial eGene detection
- analysis in any given bootstrap. The \code{'best_boot_eSNP'} column
- reports the SNP that was the top SNP most frequently across the
- bootstrap procedure. There is some evidence from simulation studies
- that this is more likely to be the causal SNP than the
- \code{'top_snp'} from the eGene detection analysis (see citation),
- although the \code{'top_snp'} and \code{'best_boot_eSNP'} are
- typically the same.
-
- Multiple SNPs may be reported in the \code{'best_boot_eSNP'} column.
- SNPs separated by a "/" indicate multiple SNPs in perfect linkage
- disequilbrium (LD), \emph{i.e.} with identical test
- statistics/effect sizes/p-values in all bootstraps, while SNPs
- separated by a ";" indicate multiple SNPs (or SNP groups in perfect
- LD) that were the top SNP(s) with equal frequency across the
- bootstrap procedure (\emph{e.g.} "SNP1;SNP2/SNP3" could indicate
- SNP1 was the top SNP in 50\% of significant bootstraps and SNP2 and
- SNP3 are in perfect LD and were was the top SNP in the other 50\% of
- significant bootstraps). The \code{'prop_top_eSNP'} column reports
- the proportion of significant bootstraps for which the
- \code{'best_boot_eSNP'} was the top SNP. A low
- \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate complex LD
- structure around the top eSNP or multiple causal eSNPs. Note that
- here the number of significant bootstraps may be higher than that
- reported in \code{'correction_boots'} if
- \code{'bootstrap_eSNPs="discovery"'}, as an eGene may be significant
- when performing global multiple testing correction across the top
- bootstrap detection group SNP but not when performing global
- multiple testing correction on the top SNP from the original eGene
- detection analysis.
  }
  \subsection{Bootstrap warning messages:}{
  It is possible for bootstrap analyses to fail due to the reduced

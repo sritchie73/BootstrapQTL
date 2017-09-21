@@ -98,41 +98,6 @@
 #'  bootstraps that were significant for each eGene is reported in the
 #'  \code{'correction_boots'} column of the returned table.
 #'  }
-#'  \subsection{Collating the most frequent top bootstrap SNP}{
-#'  In addition to correcting for the Winner's Curse, the bootstrap
-#'  procedure can also collects statistics about which SNP(s) are the top
-#'  SNP for each tested eGene in the bootstrapped detection group. This
-#'  can differ from the top SNP from the initial eGene detection
-#'  analysis in any given bootstrap. The \code{'best_boot_eSNP'} column
-#'  reports the SNP that was the top SNP most frequently across the
-#'  bootstrap procedure. There is some evidence from simulation studies
-#'  that this is more likely to be the causal SNP than the
-#'  \code{'top_snp'} from the eGene detection analysis (see citation),
-#'  although the \code{'top_snp'} and \code{'best_boot_eSNP'} are
-#'  typically the same.
-#'
-#'  Multiple SNPs may be reported in the \code{'best_boot_eSNP'} column.
-#'  SNPs separated by a "/" indicate multiple SNPs in perfect linkage
-#'  disequilbrium (LD), \emph{i.e.} with identical test
-#'  statistics/effect sizes/p-values in all bootstraps, while SNPs
-#'  separated by a ";" indicate multiple SNPs (or SNP groups in perfect
-#'  LD) that were the top SNP(s) with equal frequency across the
-#'  bootstrap procedure (\emph{e.g.} "SNP1;SNP2/SNP3" could indicate
-#'  SNP1 was the top SNP in 50\% of significant bootstraps and SNP2 and
-#'  SNP3 are in perfect LD and were was the top SNP in the other 50\% of
-#'  significant bootstraps). The \code{'prop_top_eSNP'} column reports
-#'  the proportion of significant bootstraps for which the
-#'  \code{'best_boot_eSNP'} was the top SNP. A low
-#'  \code{'prop_top_eSNP'} (\emph{e.g.} < 0.5) can indicate complex LD
-#'  structure around the top eSNP or multiple causal eSNPs. Note that
-#'  here the number of significant bootstraps may be higher than that
-#'  reported in \code{'correction_boots'} if
-#'  \code{'bootstrap_eSNPs="discovery"'}, as an eGene may be significant
-#'  when performing global multiple testing correction across the top
-#'  bootstrap detection group SNP but not when performing global
-#'  multiple testing correction on the top SNP from the original eGene
-#'  detection analysis.
-#'  }
 #'  \subsection{Bootstrap warning messages:}{
 #'  It is possible for bootstrap analyses to fail due to the reduced
 #'  sample sizes of the bootstrap detection and bootstrap estimation
@@ -211,12 +176,6 @@
 #' @param correction_type \code{character}. One of "shrinkage", "out_of_sample"
 #'  or "weighted". Determines which Winner's Curse correction method is
 #'  used (see Details).
-#' @param collate_top_snps \code{logical}. Should the collation of the
-#'  most frequent top SNP per eGene be skipped? Allows fast bootstrap
-#'  by allowing each bootstrap to test only the lead SNP-gene pairs from
-#'  the eGene detection analysis. Only works given the default package
-#'  settings: \code{'bootstrap_eSNPs="discovery"'} and \code{'local_correction="bonferroni"'}
-#'  or (\code{'local_correction="none"'}).
 #' @param errorCovariance \code{numeric matrix} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
 #'  specifying the error covariance.
 #' @param useModel \code{integer} argument to \code{\link[MatrixEQTL]{Matrix_eQTL_main}}
@@ -245,10 +204,6 @@
 #'    \item{\code{'correction_boots':}}{The number of bootstraps that contributed to the estimation of
 #'      the \code{winners_curse}, \emph{i.e.} the number of bootstraps in which the
 #'      \code{top_snp}-\code{gene} pair was significant (see details)}
-#'    \item{\code{'best_boot_eSNP':}}{The SNP or SNPs that were most frequently the top eSNP in
-#'      the bootstrap procedure (see details).}
-#'    \item{\code{'prop_top_eSNP':}}{The proportion of bootstraps in which the \code{'best_boot_eSNP'}
-#'      was the top eSNP (see details).}
 #'  }
 #'
 #' @import foreach
@@ -310,7 +265,6 @@ BootstrapQTL <- function(
   bootstrap_file_directory=NULL, cisDist=1e6,
   local_correction="bonferroni", global_correction="fdr",
   bootstrap_eSNPs="discovery", correction_type="shrinkage",
-  collate_top_snps=ifelse(bootstrap_eSNPs=="discovery" && local_correction == "bonferroni", FALSE, TRUE),
   errorCovariance=numeric(), useModel=modelLINEAR
 ) {
 
@@ -426,11 +380,6 @@ BootstrapQTL <- function(
     stop("'cisDist' must be a number > 0")
   }
 
-  # Check collate_top_snps
-  if (length(collate_top_snps) > 1 || !is.finite(collate_top_snps) || !is.logical(collate_top_snps)) {
-    stop("'collate_top_snps' must either be TRUE or FALSE")
-  }
-
   ##--------------------------------------------------------------------
   ## Set up and check options that need to be reset at end of the
   ## function
@@ -518,12 +467,11 @@ BootstrapQTL <- function(
   genepos_boot <- genepos[genepos[,1] %in% significant_eGenes, ]
 
   # Do we need to run the analysis on all cis-SNPs?
-  collate_top_snps <- collate_top_snps || bootstrap_eSNPs == "top" || !(local_correction %in% c("bonferroni", "none"))
+  all_cis_snps <- bootstrap_eSNPs == "top" || !(local_correction %in% c("bonferroni", "none"))
 
-  # If we don't need to determine the top SNP at each bootstrap, we can
-  # massively speed up the analysis by filtering the snps dataset to
-  # just the lead eSNPs.
-  if (!collate_top_snps) {
+  # If we don't need to run the bootstrap analysis for all cis-SNPs, we
+  # can filter to just the significant eSNPs
+  if (!all_cis_snps) {
     snps_per_gene <- cis_assocs[gene %in% significant_eGenes, list(n_snps=.N), by=gene]
     snps_boot <- snps$Clone()
     snps_boot$RowReorder(which(rownames(snps_boot) %in% lead_eSNPs))
@@ -536,9 +484,8 @@ BootstrapQTL <- function(
   boot_objs <-  c("cvrt", "snps_boot", "gene_boot", "snpspos",
                   "genepos_boot", "bootstrap_file_directory",
                   "snps_per_gene", "significant_eGenes", "lead_eSNPs",
-                  "bootstrap_threshold", "collate_top_snps",
-                  "errorCovariance", "cisDist", "useModel",
-                  "bootstrap_eSNPs", "local_correction")
+                  "bootstrap_threshold", "errorCovariance", "cisDist",
+                  "useModel", "bootstrap_eSNPs", "local_correction")
   other_objs <- ls()[!(ls() %in% boot_objs)]
 
   ##--------------------------------------------------------------------
@@ -618,28 +565,10 @@ BootstrapQTL <- function(
       detection_eQTL_SNPs[, snp_type := "mapping"]
       detection_eQTL_SNPs[, bootstrap := id_boot]
 
-      if (collate_top_snps) {
-        # We also want to collect statistics about the top eSNP in the detection group
-        detection_top_SNPs <- get_eGenes(detection_cis_assocs, local_correction, "none", snps_per_gene = snps_per_gene)
-        # Filter to significant eGenes
-        detection_top_SNPs <- detection_top_SNPs[local_pval < bootstrap_threshold]
-        # Get eSNPs with identical statisticis due to perfect LD in bootstrap detection group
-        detection_top_SNPs <- get_eSNPs(detection_cis_assocs, detection_top_SNPs, collapse=FALSE)
-        # Filter columns
-        detection_top_SNPs <- detection_top_SNPs[, list(gene, snps)]
-        # Add identifier columns
-        detection_top_SNPs[, snp_type := "top"]
-        detection_top_SNPs[, bootstrap := id_boot]
-      }
-
       # If there are no significant eGenes in this bootstrap we can move
       # to the next one
       if(nrow(detection_eQTL_SNPs) == 0) {
-        if (!(collate_top_snps) || nrow(detection_top_SNPs) == 0) {
-          return(NULL)
-        } else {
-          return(detection_top_SNPs)
-        }
+        return(NULL)
       }
 
       ##----------------------------------------------------------------
@@ -693,19 +622,9 @@ BootstrapQTL <- function(
         sig_boot_assocs <- merge(detection_eQTL_SNPs,
                                  estimation_cis_assocs[, list(gene, snps, estimation_beta=beta)],
                                  by=c("gene", "snps"))
-
-        if (collate_top_snps) {
-          # Add the top detection SNPs table
-          sig_boot_assocs <- rbind(sig_boot_assocs, detection_top_SNPs, fill=TRUE)
-        }
-
         return(sig_boot_assocs)
       }, error=function(e) {
-        if (exists("detection_top_SNPs") && nrow(detection_top_SNPs) > 0 && detection_top_SNPs[,bootstrap] == id_boot) {
-          return(rbind_dt(detection_top_SNPs, data.table(bootstrap=id_boot, error=e$message, error_type="estimation")))
-        } else {
-          return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
-        }
+        return(data.table(bootstrap=id_boot, error=e$message, error_type="estimation"))
       })
     }, error=function(e) {
       return(data.table(bootstrap=id_boot, error=e$message, error_type="detection"))
@@ -744,13 +663,8 @@ BootstrapQTL <- function(
     force_sign=ifelse(bootstrap_eSNPs == "top", TRUE, FALSE))
 
   ##--------------------------------------------------------------------
-  ## Collate information about the most frequent eSNPs in bootstrap
+  ##  Prepare table to be returned
   ##--------------------------------------------------------------------
-
-  if (collate_top_snps) {
-    cat("Identifying lead SNPs in bootstrap analysis...\n")
-    eGenes <- get_bootstrap_lead_SNPs(boot_eGenes[snp_type == "top"], eGenes, cis_assocs)
-  }
 
   # Sort eGenes by significance
   eGenes <- eGenes[order(abs(statistic), decreasing=TRUE)][order(corrected_pval)]
