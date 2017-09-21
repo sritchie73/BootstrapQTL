@@ -391,7 +391,7 @@ BootstrapQTL <- function(
 
   # Check if the user has already loaded data.table: if not, load it and
   # make sure we return the table as a data.frame
-  has.data.table <- isNamespaceLoaded("data.table")
+  has.data.table <- !("data.table" %in% names(sessionInfo()$loadedOnly))
   if (!has.data.table) {
     suppressMessages(requireNamespace("data.table")) # silently load without tutorial message
   }
