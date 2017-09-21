@@ -1,9 +1,9 @@
 # BootstrapQTL
 ## A *cis*-QTL mapping method that corrects for the Winner's Curse
 
-BootstrapQTL is a cis-QTL mapping tool that uses a fast bootstrap procedure 
-to correct for the overestimation of effect sizes arising from the bias
-introduced by lead-SNP selection ("The Winner's Curse effect").
+BootstrapQTL is a *cis*-QTL mapping tool that uses a fast bootstrap procedure 
+to correct for the overestimation of effect sizes present in  *cis*-QTL 
+mapping studies ("The Winner's Curse effect").
 
 ## Installation
 

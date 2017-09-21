@@ -1,18 +1,14 @@
-### Summarise MatrixEQTL output to the eGene level
-###
-### Take the top SNP at each gene and perform multiple testing
-### correction across eGenes
+### Apply hierarchical multiple testing correction
 ###
 ### @param cis_assocs data.table of cis-associations from MatrixEQTL
 ### @param local multiple testing correction method to use at each gene.
 ### @param global multiple testing correction method to us across all genes.
-### @param eSNPs optional table specifying eSNPs to use for each gene rather
-###        than the top-SNP for global multiple testing correction
 ### @param snps_per_gene a data.table providing the number of cis SNPs for
 ###        each gene.
 ###
-### @return a data.table containing only significant eGenes and their top SNP
-get_eGenes <- function(cis_assocs, local, global, eSNPs, snps_per_gene=NULL) {
+### @return a data.table containing only significant eGenes or significant
+###   eSNPs
+hierarchical_correction <- function(cis_assocs, local, global, snps_per_gene=NULL) {
   # Suppress CRAN notes about data.table columns
   local_pval <- NULL
   pvalue <- NULL
@@ -21,26 +17,21 @@ get_eGenes <- function(cis_assocs, local, global, eSNPs, snps_per_gene=NULL) {
   statistic <- NULL
   global_pval <- NULL
 
-  if (!is.null(snps_per_gene)) {
+  # Apply local correction across SNPs at each gene
+  if (!is.null(snps_per_gene)) { # i.e. Bonferroni when test only performed on some SNPs
     cis_assocs <- merge(cis_assocs, snps_per_gene, by="gene")
     cis_assocs[, local_pval := adjust_p(pvalue, method=local, N=unique(n_snps)), by=gene]
   } else {
     cis_assocs[, local_pval := adjust_p(pvalue, method=local), by=gene]
   }
 
-  if (!missing(eSNPs)) {
-    eGenes <- merge(cis_assocs, eSNPs, by=c("gene", "snps"))
-  } else {
-    # Get SNP with smallest p-value for each gene/ If multiple SNPs have
-    # the smallest pvalue, make sure the one with the biggest T-statistic
-    # is selected
-    cis_assocs <- cis_assocs[order(abs(statistic), decreasing=TRUE)]
-    eGenes <- cis_assocs[, .SD[which.min(local_pval)], by="gene"] # take row with best p-value per gene
-  }
-  eGenes[, global_pval := adjust_p(local_pval, method=global)] # global gene correction
+  # Apply global correction across genes using the best p-value per gene
+  cis_assocs <- cis_assocs[order(abs(statistic), decreasing=TRUE)]
+  top_assocs <- cis_assocs[, .SD[which.min(local_pval)], by="gene"]
+  top_assocs[,global_pval := adjust_p(local_pval, method=global)]
+  cis_assocs <- merge(cis_assocs, top_assocs[,list(gene, global_pval)], by="gene")
 
-
-  return(eGenes)
+  return(cis_assocs)
 }
 
 ### Adjust p-values for multiple tests
@@ -50,4 +41,23 @@ adjust_p <- function(pvals, method, N=NULL) {
   } else {
     p.adjust(pvals, method, n=ifelse(is.null(N), length(pvals), N))
   }
+}
+
+### Determine the eSNP significance threshold after hiearchical correction
+###
+### @param cis_assocs a table of hierarchically corrected associations
+get_eSNP_threshold <- function(cis_assocs) {
+  # Suppress CRAN NOTES
+  statistic <- NULL
+  local_pval <- NULL
+  global_pval <- NULL
+
+  # What is the locally corrected p-value corresponding to the global
+  # correction threshold of 0.05?
+  cis_assocs <- cis_assocs[order(abs(statistic), decreasing=TRUE)]
+  top_assocs <- cis_assocs[, .SD[which.min(local_pval)], by="gene"]
+  top_assocs <- top_assocs[order(global_pval)]
+  n_sig <- top_assocs[,sum(global_pval < 0.05)]
+  eSNP_threshold <- top_assocs[n_sig:(n_sig+1), mean(local_pval)]
+  return(eSNP_threshold)
 }
