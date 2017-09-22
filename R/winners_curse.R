@@ -22,6 +22,10 @@ correct_winners_curse <- function(boot_eGenes, sig_assocs, estimator="shrinkage"
     effect_sizes <- merge(boot_eGenes[,list(gene, snps, detection_beta, estimation_beta, bootstrap)],
                           sig_assocs[,list(gene, snps, nominal_beta=beta)], by=c("gene", "snps"))
 
+    # Force the effect size sign to always be in the same direction
+    effect_sizes[, detection_beta := abs(detection_beta) * sign(nominal_beta)]
+    effect_sizes[, estimation_beta := abs(estimation_beta) * sign(nominal_beta)]
+
     if (estimator == "shrinkage") {
       effect_sizes <- effect_sizes[, list(
         corrected_beta=unique(nominal_beta) - mean(detection_beta - estimation_beta),
