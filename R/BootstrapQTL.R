@@ -454,7 +454,7 @@ BootstrapQTL <- function(
 
   # If we don't need to run the bootstrap analysis for all cis-SNPs, we
   # can filter to just the significant eSNPs
-  if (!(local_correction %in% c("bonferroni", "none"))) {
+  if (local_correction %in% c("bonferroni", "none")) {
     snps_per_gene <- cis_assocs[gene %in% sig_assocs[,gene], list(n_snps=.N), by=gene]
     snps_boot <- snps$Clone()
     snps_boot$RowReorder(which(rownames(snps_boot) %in% sig_assocs[,snps]))
