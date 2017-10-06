@@ -309,16 +309,6 @@ BootstrapQTL <- function(
     stop("'cvrt' column names must be in same order as 'snps' and 'gene'")
   }
 
-  # Check for special characters in SNP ids
-  if (any(grepl("/", rownames(snps)) || any(grepl(";", rownames(snps))))) {
-    stop('special characters ";" and "/" not allowed in SNP identifiers')
-  }
-  if (any(grepl("/", snpspos[,1]) || any(grepl(";", snpspos[,1])))) {
-    # I.e. the user will rename the problem variants in 'snps' but
-    # forget to also fix 'snpspos'.
-    stop('special characters ";" and "/" found in \'snpspos\' SNP identifiers')
-  }
-
   # Check multiple testing adjustment methods are ok
   mult.test.methods <- c(p.adjust.methods, "qvalue")
   if (length(local_correction) > 1 || length(global_correction) > 1 ||
