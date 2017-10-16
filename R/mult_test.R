@@ -18,7 +18,7 @@ hierarchical_correction <- function(cis_assocs, local, global, tests_per_gene=NU
   global_pval <- NULL
 
   # Apply local correction across SNPs at each gene
-  if (!is.null(snps_per_gene)) { # i.e. Bonferroni when test only performed on some SNPs
+  if (!is.null(tests_per_gene)) { # i.e. Bonferroni when test only performed on some SNPs
     cis_assocs <- merge(cis_assocs, tests_per_gene, by="gene")
     cis_assocs[, local_pval := adjust_p(pvalue, method=local, N=unique(n_tests)), by=gene]
   } else {
