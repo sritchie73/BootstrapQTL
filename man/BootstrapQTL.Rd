@@ -9,7 +9,7 @@ BootstrapQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   bootstrap_file_directory = NULL, cisDist = 1e+06,
   local_correction = "bonferroni", global_correction = "fdr",
   correction_type = "shrinkage", errorCovariance = numeric(),
-  useModel = modelLINEAR)
+  useModel = modelLINEAR, eigenMT_tests_per_gene = NULL)
 }
 \arguments{
 \item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
@@ -76,8 +76,10 @@ eQTL mapping.}
 
 \item{local_correction}{multiple testing correction method to use when
 correcting p-values across all SNPs at each gene (see EQTL mapping
-section in Details). Must be a method specified in \code{\link[stats]{p.adjust.methods}}
-or "qvalue" for the \code{\link[qvalue]{qvalue}} package.}
+section in Details). Can be a method specified in \code{\link[stats]{p.adjust.methods}},
+"qvalue" for the \code{\link[qvalue]{qvalue}} package, or "eigenMT"
+if EigenMT has been used to estimate the number effective independent 
+tests (see \code{eigenMT_tests_per_gene}).}
 
 \item{global_correction}{multiple testing correction method to use when
 correcting p-values across all genes after performing local correction
@@ -96,6 +98,10 @@ specifying the error covariance.}
 specifying the type of model to fit between each SNP and gene. Should be one of
 \code{\link[MatrixEQTL]{modelLINEAR}}, \code{\link[MatrixEQTL]{modelANOVA}}, or
 \code{\link[MatrixEQTL]{modelLINEAR_CROSS}}.}
+
+\item{eigenMT_tests_per_gene}{\code{data.frame} containing the number of effective
+independent tests for each gene estimated by the EigenMT (\url{https://github.com/joed3/eigenMT}).
+Ignore unless \code{'local_correction="eigenMT"'}.}
 }
 \value{
 A \code{data.frame} (or \code{\link[data.table]{data.table}} if the

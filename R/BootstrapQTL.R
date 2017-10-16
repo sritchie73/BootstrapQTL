@@ -170,8 +170,10 @@
 #'  eQTL mapping.
 #' @param local_correction multiple testing correction method to use when
 #'  correcting p-values across all SNPs at each gene (see EQTL mapping
-#'  section in Details). Must be a method specified in \code{\link[stats]{p.adjust.methods}}
-#'  or "qvalue" for the \code{\link[qvalue]{qvalue}} package.
+#'  section in Details). Can be a method specified in \code{\link[stats]{p.adjust.methods}},
+#'  "qvalue" for the \code{\link[qvalue]{qvalue}} package, or "eigenMT"
+#'  if EigenMT has been used to estimate the number effective independent 
+#'  tests (see \code{eigenMT_tests_per_gene}).
 #' @param global_correction multiple testing correction method to use when
 #'  correcting p-values across all genes after performing local correction
 #'  (see EQTL mapping section in Details). Must be a method specified in
@@ -186,6 +188,9 @@
 #'  specifying the type of model to fit between each SNP and gene. Should be one of
 #'  \code{\link[MatrixEQTL]{modelLINEAR}}, \code{\link[MatrixEQTL]{modelANOVA}}, or
 #'  \code{\link[MatrixEQTL]{modelLINEAR_CROSS}}.
+#' @param eigenMT_tests_per_gene \code{data.frame} containing the number of effective
+#'  independent tests for each gene estimated by the EigenMT (\url{https://github.com/joed3/eigenMT}).
+#'  Ignore unless \code{'local_correction="eigenMT"'}.
 #'
 #' @return
 #'  A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
@@ -212,6 +217,7 @@
 #' @import data.table
 #' @import MatrixEQTL
 #' @importFrom stats p.adjust p.adjust.methods
+#' @importFrom utils sessionInfo
 #'
 #' @export
 #'
@@ -267,7 +273,7 @@ BootstrapQTL <- function(
   bootstrap_file_directory=NULL, cisDist=1e6,
   local_correction="bonferroni", global_correction="fdr",
   correction_type="shrinkage", errorCovariance=numeric(),
-  useModel=modelLINEAR
+  useModel=modelLINEAR, eigenMT_tests_per_gene=NULL
 ) {
 
   # R CMD check complains about data.table columns and foreach iterators
@@ -311,16 +317,31 @@ BootstrapQTL <- function(
 
   # Check multiple testing adjustment methods are ok
   mult.test.methods <- c(p.adjust.methods, "qvalue")
-  if (length(local_correction) > 1 || length(global_correction) > 1 ||
-      !(local_correction %in% mult.test.methods ) ||
-      !(global_correction %in% mult.test.methods )) {
-    stop("'local_correction' and 'global_correction' must be one of ",
-         paste(paste0('"', p.adjust.methods, '"'), collapse=", "), ", or ",
-         '"qvalue"')
+  if (length(local_correction) > 1 || !(local_correction %in% c(mult.test.methods, "eigenMT"))) {
+    stop("'local_correction' must be one of ", paste(paste0('"',  mult.test.methods, '"'), ", or \"eigenMT\""))
+  }
+  if (length(global_correction) > 1 || !(global_correction %in% mult.test.methods)) {
+    stop("'local_correction' must be one of ", paste(paste0('"', p.adjust.methods, '"'), ", or \"qvalue\""))
   }
   if ((local_correction == "qvalue" || global_correction == "qvalue") &&
       !pkgReqCheck("qvalue")) {
     stop("'qvalue' package not installed")
+  }
+  if (local_correction == "eigenMT" && (
+    is.null(eigenMT_tests_per_gene) ||  
+    !is.data.frame(eigenMT_tests_per_gene) ||
+    nrow(eigenMT_tests_per_gene) != gene$nRows() ||
+    ncol(eigenMT_tests_per_gene) != 2 || 
+    !is.numeric(eigenMT_tests_per_gene[,2]) || 
+    any(is.na(eigenMT_tests_per_gene[,2])) ||
+    !all(eigenMT_tests_per_gene[,1] %in% rownames(gene)) ||
+    !all(rownames(gene) %in% eigenMT_tests_per_gene[,1])
+  )) {
+    stop("'eigenMT_tests_per_gene' must be a data.frame containing the number of effective independent tests per gene")
+  }
+  if (!is.null(eigenMT_tests_per_gene)) {
+    eigenMT_tests_per_gene <- as.data.table(eigenMT_tests_per_gene)
+    setnames(eigenMT_tests_per_gene, c("gene", "n_tests"))
   }
 
   # Check correction_type input is ok
@@ -418,7 +439,7 @@ BootstrapQTL <- function(
   # Load the table of all cis-Assocations
   cis_assocs <- get_cis_assocs(eQTLs, eGene_detection_file_name)
   # Perform hierarchcial correction
-  cis_assocs <- hierarchical_correction(cis_assocs, local_correction, global_correction)
+  cis_assocs <- hierarchical_correction(cis_assocs, local_correction, global_correction, eigenMT_tests_per_gene)
   # Determine significance threshold for eSNPs
   eSNP_threshold <- get_eSNP_threshold(cis_assocs)
   # Filter to significant associations
@@ -445,19 +466,26 @@ BootstrapQTL <- function(
   # If we don't need to run the bootstrap analysis for all cis-SNPs, we
   # can filter to just the significant eSNPs
   if (local_correction %in% c("bonferroni", "none")) {
-    snps_per_gene <- cis_assocs[gene %in% sig_assocs[,gene], list(n_snps=.N), by=gene]
+    tests_per_gene <- cis_assocs[gene %in% sig_assocs[,gene], list(n_tests=.N), by=gene]
+  } else if (local_correction == "eigenMT") {
+    tests_per_gene <- eigenMT_tests_per_gene
+  } else {
+    tests_per_gene <- NULL
+  }
+  
+  if (!is.null(tests_per_gene)) {
     snps_boot <- snps$Clone()
     snps_boot$RowReorder(which(rownames(snps_boot) %in% sig_assocs[,snps]))
   } else {
-    snps_per_gene <- NULL
     snps_boot <- snps
   }
+
   snpspos <- snpspos[snpspos[,1] %in% sig_assocs[,snps],]
 
   # Make sure only necessary objects are ported to each worker
   boot_objs <-  c("cvrt", "snps_boot", "gene_boot", "snpspos",
                   "genepos", "bootstrap_file_directory", "sig_pairs",
-                  "snps_per_gene", "local_correction", "eSNP_threshold",
+                  "tests_per_gene", "local_correction", "eSNP_threshold",
                   "errorCovariance", "cisDist", "useModel")
   other_objs <- ls()[!(ls() %in% boot_objs)]
 
@@ -524,7 +552,7 @@ BootstrapQTL <- function(
       # Load the table of all cis-Assocations
       detection_cis_assocs <- get_cis_assocs(eQTL_detection, detection_file)
       # Perform local SNP correction
-      detection_cis_assocs <- hierarchical_correction(detection_cis_assocs, local_correction, "none", snps_per_gene)
+      detection_cis_assocs <- hierarchical_correction(detection_cis_assocs, local_correction, "none", tests_per_gene)
       # Filter to just significant eSNP-eGene pairs (i.e. some SNPs may
       # be in cis with multiple genes, but only associated with 1)
       detection_cis_assocs <- detection_cis_assocs[sig_pairs, on=c("gene", "snps")]

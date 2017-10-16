@@ -3,12 +3,12 @@
 ### @param cis_assocs data.table of cis-associations from MatrixEQTL
 ### @param local multiple testing correction method to use at each gene.
 ### @param global multiple testing correction method to us across all genes.
-### @param snps_per_gene a data.table providing the number of cis SNPs for
-###        each gene.
+### @param tests_per_gene a data.table providing the number of cis SNPs / 
+###        independent tests for each gene.
 ###
 ### @return a data.table containing only significant eGenes or significant
 ###   eSNPs
-hierarchical_correction <- function(cis_assocs, local, global, snps_per_gene=NULL) {
+hierarchical_correction <- function(cis_assocs, local, global, tests_per_gene=NULL) {
   # Suppress CRAN notes about data.table columns
   local_pval <- NULL
   pvalue <- NULL
@@ -19,8 +19,8 @@ hierarchical_correction <- function(cis_assocs, local, global, snps_per_gene=NUL
 
   # Apply local correction across SNPs at each gene
   if (!is.null(snps_per_gene)) { # i.e. Bonferroni when test only performed on some SNPs
-    cis_assocs <- merge(cis_assocs, snps_per_gene, by="gene")
-    cis_assocs[, local_pval := adjust_p(pvalue, method=local, N=unique(n_snps)), by=gene]
+    cis_assocs <- merge(cis_assocs, tests_per_gene, by="gene")
+    cis_assocs[, local_pval := adjust_p(pvalue, method=local, N=unique(n_tests)), by=gene]
   } else {
     cis_assocs[, local_pval := adjust_p(pvalue, method=local), by=gene]
   }
