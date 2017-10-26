@@ -1,0 +1,10 @@
+bibentry(bibtype = "Article",
+         title="Power, false discovery rate and {Winner's Curse} in {eQTL} studies",
+         author=c(person("Qin Qin", "Huang"), 
+                  person("Scott Callum", "Ritchie"),
+                  person("Marta", "Brozynska"),
+                  person("Michael", "Inouye")),
+         year = "2017",
+         doi = "10.1101/209171",
+         journal="bioRxiv",
+         publisher="Cold Spring Harbor Laboratory")
