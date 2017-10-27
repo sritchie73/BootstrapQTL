@@ -1,10 +1,10 @@
 Package: BootstrapQTL
 Type: Package
 Title: Bootstrap cis-QTL method that corrects for The Winner's Curse
-Version: 0.7.5
-Authors@R: c(person(given="Qinqin", family="Huang", role=c("aut")),
-    person(given="Scott", family="Ritchie", 
-         email="sritchie73@gmail.com", role=c("aut", "cre")))
+Version: 0.7.6
+Author: Qin Qin Huang [aut],
+  Scott Ritchie [aut, cre]
+Maintainer: Scott Ritchie <sritchie73@gmail.com>
 BugReports: https://github.com/InouyeLab/bootstrapQTL/issues
 Description: Identifies genome-related molecular traits with significant 
   evidence of genetic regulation and performs a boostrap procedure to 
