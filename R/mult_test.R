@@ -12,7 +12,7 @@ hierarchical_correction <- function(cis_assocs, local, global, tests_per_gene=NU
   # Suppress CRAN notes about data.table columns
   local_pval <- NULL
   pvalue <- NULL
-  n_snps <- NULL
+  n_tests <- NULL
   gene <- NULL
   statistic <- NULL
   global_pval <- NULL
