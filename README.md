@@ -9,7 +9,7 @@ For more information see the associated publication in *Nucleic Acids Research*;
 
 ## Installation
 
-The latest stable version of NetRep can be installed either directly from
+The latest stable version of BootstrapQTL can be installed directly from
 from this GitHub repository:
 
 ```{r}
