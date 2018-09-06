@@ -5,6 +5,8 @@ BootstrapQTL is a *cis*-QTL mapping tool that uses a fast bootstrap procedure
 to correct for the overestimation of effect sizes present in  *cis*-QTL 
 mapping studies ("The Winner's Curse effect").
 
+For more information see the associated publication in *Nucleic Acids Research*; [Power, false discovery rate and Winner’s Curse in eQTL studies](https://doi.org/10.1093/nar/gky780).
+
 ## Installation
 
 The latest stable version of NetRep can be installed either directly from
@@ -15,11 +17,11 @@ library(devtools)
 install_github("InouyeLab/BootstrapQTL")
 ```
 
-A future release on CRAN is planned. 
+A future release on CRAN is planned.
 
 ## Package tutorial
 
-The following package tutorial and code exampl
+The following package tutorial and code example
 
 BootstrapQTL makes use of the [MatrixEQTL](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/)
 package and therefore requires data to be loaded into R as per the 

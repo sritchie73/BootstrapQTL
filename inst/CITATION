@@ -4,7 +4,8 @@ bibentry(bibtype = "Article",
                   person("Scott Callum", "Ritchie"),
                   person("Marta", "Brozynska"),
                   person("Michael", "Inouye")),
-         year = "2017",
-         doi = "10.1101/209171",
-         journal="bioRxiv",
-         publisher="Cold Spring Harbor Laboratory")
+         month =  "sep",          
+         year = "2018",
+         doi = "10.1093/nar/gky780",
+         issn = "0305-1048",
+         journal="Nucleic acids research")
