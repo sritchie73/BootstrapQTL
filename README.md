@@ -21,17 +21,15 @@ A future release on CRAN is planned.
 
 ## Package tutorial
 
-The following package tutorial and code example
-
 BootstrapQTL makes use of the [MatrixEQTL](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/)
 package and therefore requires data to be loaded into R as per the 
 [MatrixEQTL tutorial](http://www.bios.unc.edu/research/genomic_software/Matrix_eQTL/runit.html).
 
 The following script, package interface, and package documentation all
 describe the use of BootstrapQTL for cis-eQTL mapping. However, this 
-approach and package can be applied for generally to any QTL study of
+approach and package can be applied more generally to any QTL study of
 quantitative traits with chromosomal positions, for example cis-QTL 
-studies of epigenetic modifications.
+studies of epigenetic modifications (described below). 
 
 The following code shows an example of loading genotype data, gene 
 expression data, covariates data, snp position data, and gene position
