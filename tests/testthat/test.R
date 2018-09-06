@@ -44,9 +44,9 @@ test_that("Run BootstrapQTL", {
 
   outfile <- tempfile()
   outdir <- tempdir()
-  eQTLs<- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2,
-                          eGene_detection_file_name = outfile,
-                          bootstrap_file_directory = outdir)
+  eQTLs <- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2,
+                        eGene_detection_file_name = outfile,
+                        bootstrap_file_directory = outdir)
   unlink(outfile)
   unlink(outdir, recursive=TRUE)
 
