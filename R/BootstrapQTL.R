@@ -432,7 +432,8 @@ BootstrapQTL <- function(
     cisDist = cisDist,
     output_file_name=NULL,
     output_file_name.cis=eGene_detection_file_name,
-    noFDRsaveMemory=ifelse(is.null(eGene_detection_file_name), FALSE, TRUE),
+#   noFDRsaveMemory=ifelse(is.null(eGene_detection_file_name), FALSE, TRUE),
+    noFDRsaveMemory=FALSE, # See: https://github.com/andreyshabalin/MatrixEQTL/issues/8
     useModel=modelLINEAR,
     verbose=FALSE
   );
@@ -547,7 +548,8 @@ BootstrapQTL <- function(
           cisDist = cisDist,
           output_file_name=NULL,
           output_file_name.cis=detection_file,
-          noFDRsaveMemory=ifelse(is.null(detection_file), FALSE, TRUE),
+          #noFDRsaveMemory=ifelse(is.null(detection_file), FALSE, TRUE),
+          noFDRsaveMemory=FALSE, # See: https://github.com/andreyshabalin/MatrixEQTL/issues/8
           verbose=FALSE
         )
         # Load the table of all cis-Assocations
@@ -605,7 +607,8 @@ BootstrapQTL <- function(
             cisDist = cisDist,
             output_file_name=NULL,
             output_file_name.cis=estimation_file,
-            noFDRsaveMemory=ifelse(is.null(estimation_file), FALSE, TRUE),
+            #noFDRsaveMemory=ifelse(is.null(detection_file), FALSE, TRUE),
+            noFDRsaveMemory=FALSE, # See: https://github.com/andreyshabalin/MatrixEQTL/issues/8
             verbose=FALSE
           )
           # Load the table of all cis-assocations
