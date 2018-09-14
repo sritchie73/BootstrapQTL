@@ -12,10 +12,10 @@ BootstrapQTL(snps, gene, snpspos, genepos, cvrt = SlicedData$new(),
   useModel = modelLINEAR, eigenMT_tests_per_gene = NULL)
 }
 \arguments{
-\item{snps}{\code{\link[MatrixEQTL]{SlicedData}} object containing genotype
+\item{snps}{\code{\link[MatrixEQTL:SlicedData-class]{SlicedData}} object containing genotype
 information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 
-\item{gene}{\code{\link[MatrixEQTL]{SlicedData}} object containing gene expression
+\item{gene}{\code{\link[MatrixEQTL:SlicedData-class]{SlicedData}} object containing gene expression
 information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.}
 
 \item{snpspos}{\code{data.frame} object with information about SNP locations.
@@ -45,7 +45,7 @@ data.frame. Similarly, when analysing a molecular phenotype that
 have a single chromosomal position then the 'left' and 'right'
 columns should both contain the same position.}
 
-\item{cvrt}{\code{\link[MatrixEQTL]{SlicedData}} object containing covariate
+\item{cvrt}{\code{\link[MatrixEQTL:SlicedData-class]{SlicedData}} object containing covariate
 information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
 Argument can be ignored in the case of no covariates.}
 

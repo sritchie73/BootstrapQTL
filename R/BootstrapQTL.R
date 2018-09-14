@@ -116,9 +116,9 @@
 #'  failures grouped by the reason for the bootstrap failure.
 #'  }
 #'
-#' @param snps \code{\link[MatrixEQTL]{SlicedData}} object containing genotype
+#' @param snps \code{\link[MatrixEQTL:SlicedData-class]{SlicedData}} object containing genotype
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
-#' @param gene \code{\link[MatrixEQTL]{SlicedData}} object containing gene expression
+#' @param gene \code{\link[MatrixEQTL:SlicedData-class]{SlicedData}} object containing gene expression
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
 #' @param snpspos \code{data.frame} object with information about SNP locations.
 #'   Used in conjunction with \code{'genespos'} and \code{'cisDist'} to
@@ -145,7 +145,7 @@
 #'   data.frame. Similarly, when analysing a molecular phenotype that
 #'   have a single chromosomal position then the 'left' and 'right'
 #'   columns should both contain the same position.
-#' @param cvrt \code{\link[MatrixEQTL]{SlicedData}} object containing covariate
+#' @param cvrt \code{\link[MatrixEQTL:SlicedData-class]{SlicedData}} object containing covariate
 #'   information used as input into \code{\link[MatrixEQTL]{Matrix_eQTL_main}}.
 #'   Argument can be ignored in the case of no covariates.
 #' @param n_bootstraps number of bootstraps to run.
