@@ -10,14 +10,16 @@ For more information see the associated publication in *Nucleic Acids Research*;
 ## Installation
 
 The latest stable version of BootstrapQTL can be installed directly from
-from this GitHub repository:
+from either this GitHub repository or from CRAN:
 
 ```{r}
+# GitHub Install:
 library(devtools)
 install_github("InouyeLab/BootstrapQTL")
-```
 
-A future release on CRAN is planned.
+# CRAN Install:
+install.packages("BootstrapQTL")
+```
 
 ## Package tutorial
 
