@@ -76,7 +76,7 @@ eQTL mapping.}
 
 \item{local_correction}{multiple testing correction method to use when
 correcting p-values across all SNPs at each gene (see EQTL mapping
-section in Details). Can be a method specified in \code{\link[stats]{p.adjust.methods}},
+section in Details). Can be a method specified in \code{\link[stats:p.adjust]{p.adjust.methods}},
 "qvalue" for the \code{\link[qvalue]{qvalue}} package, or "eigenMT"
 if EigenMT has been used to estimate the number effective independent 
 tests (see \code{eigenMT_tests_per_gene}).}
@@ -84,7 +84,7 @@ tests (see \code{eigenMT_tests_per_gene}).}
 \item{global_correction}{multiple testing correction method to use when
 correcting p-values across all genes after performing local correction
 (see EQTL mapping section in Details). Must be a method specified in
-\code{\link[stats]{p.adjust.methods}} or "qvalue" for the
+\code{\link[stats:p.adjust]{p.adjust.methods}} or "qvalue" for the
 \code{\link[qvalue]{qvalue}} package.}
 
 \item{correction_type}{\code{character}. One of "shrinkage", "out_of_sample"
@@ -111,7 +111,7 @@ A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
    \item{\code{'eSNP':}}{The eQTL eSNP.}
    \item{\code{'statistic':}}{The test statistic for the association between the eGene and eSNP.}
    \item{\code{'nominal_beta':}}{The eQTL effect size for the \code{eGene}-\code{eSNP}
-     pair estimated by \code{\link[MatrixEQTL]{MatrixEQTL}}.}
+     pair estimated by \code{\link[MatrixEQTL:MatrixEQTL-package]{MatrixEQTL}}.}
    \item{\code{'corrected_beta':}}{The eQTL effect size after adjustment for the \code{winners_curse}.}
    \item{\code{'winners_curse':}}{The amount of effect size overestimation determined by the
      bootstrap analysis (See Details).}
@@ -119,7 +119,7 @@ A \code{data.frame} (or \code{\link[data.table]{data.table}} if the
      the \code{winners_curse}, \emph{i.e.} the number of bootstraps in which the \code{eSNP}
      remained significantly associated with the \code{eGene} (see Details).}
    \item{\code{'nominal_pval':}}{The p-value for the \code{eGene}-\code{eSNP} pair
-     from the \code{\link[MatrixEQTL]{MatrixEQTL}} analysis.}
+     from the \code{\link[MatrixEQTL:MatrixEQTL-package]{MatrixEQTL}} analysis.}
    \item{\code{'eSNP_pval':}}{The locally corrected p-value for the \code{eGene}-\code{eSNP} pair (see Details).}
    \item{\code{'eGene_pval':}}{The globally corrected p-value for the \code{eGene} based on its top eSNP (see Details).}
  }
@@ -142,10 +142,10 @@ Although the package interface and documentation describe the use of
 
  \subsection{Cis-eQTL mapping:}{
  EQTL mapping is performed using the
- \code{\link[MatrixEQTL]{MatrixEQTL}} package. A three step
+ \code{\link[MatrixEQTL:MatrixEQTL-package]{MatrixEQTL}} package. A three step
  hieararchical multiple testing correction procedure is used to
  determine significant eGenes and eSNPs. At the first step, nominal
- p-values from \code{\link[MatrixEQTL]{MatrixEQTL}} for all
+ p-values from \code{\link[MatrixEQTL:MatrixEQTL-package]{MatrixEQTL}} for all
  \emph{cis}-SNPs are adjusted for each gene separately using the
  method specified in the \code{'local_correction'} argument
  (Bonferroni correction by default). In the second step, the best
@@ -222,7 +222,7 @@ Although the package interface and documentation describe the use of
  power (\emph{i.e. minor allele frequency, true effect size, and
  study sample size}). Users should be skeptical of corrected effect
  sizes that are larger than the nominal effect sizes estimated by
- \code{\link[MatrixEQTL]{MatrixEQTL}}, which likely reflects low
+ \code{\link[MatrixEQTL:MatrixEQTL-package]{MatrixEQTL}}, which likely reflects low
  power for eQTL detection rather than an underestimated effect size.
  }
  \subsection{Bootstrap warning messages:}{
@@ -233,7 +233,7 @@ Although the package interface and documentation describe the use of
  homozygous for an eSNP or have no variance in their supplied
  covariates (\emph{e.g.} the estimation group may comprise
  individuals all of the same sex). In this case the bootstrap will
- fail for all eQTLs since \code{\link[MatrixEQTL]{MatrixEQTL}} will
+ fail for all eQTLs since \code{\link[MatrixEQTL:MatrixEQTL-package]{MatrixEQTL}} will
  be unable to perform the model fitting.
 
  Failed bootstraps are reported after the bootstrap procedure in
