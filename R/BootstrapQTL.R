@@ -172,7 +172,7 @@
 #'  correcting p-values across all SNPs at each gene (see EQTL mapping
 #'  section in Details). Can be a method specified in \code{\link[stats:p.adjust]{p.adjust.methods}},
 #'  "qvalue" for the \code{\link[qvalue]{qvalue}} package, or "eigenMT"
-#'  if EigenMT has been used to estimate the number effective independent 
+#'  if EigenMT has been used to estimate the number effective independent
 #'  tests (see \code{eigenMT_tests_per_gene}).
 #' @param global_correction multiple testing correction method to use when
 #'  correcting p-values across all genes after performing local correction
@@ -328,11 +328,11 @@ BootstrapQTL <- function(
     stop("'qvalue' package not installed")
   }
   if (local_correction == "eigenMT" && (
-    is.null(eigenMT_tests_per_gene) ||  
+    is.null(eigenMT_tests_per_gene) ||
     !is.data.frame(eigenMT_tests_per_gene) ||
     nrow(eigenMT_tests_per_gene) != gene$nRows() ||
-    ncol(eigenMT_tests_per_gene) != 2 || 
-    !is.numeric(eigenMT_tests_per_gene[,2]) || 
+    ncol(eigenMT_tests_per_gene) != 2 ||
+    !is.numeric(eigenMT_tests_per_gene[,2]) ||
     any(is.na(eigenMT_tests_per_gene[,2])) ||
     !all(eigenMT_tests_per_gene[,1] %in% rownames(gene)) ||
     !all(rownames(gene) %in% eigenMT_tests_per_gene[,1])
@@ -455,16 +455,16 @@ BootstrapQTL <- function(
     ## Apply filters prior to bootstrapping to speed up calculations and
     ## minimise memory usage
     ##--------------------------------------------------------------------
-  
+
     cat("Optimising data for bootstrap procedure...\n")
-  
+
     # Filter 'genes' and 'snps' to just the significant assocations
     sig_pairs <- sig_assocs[,list(gene, snps)]
-  
+
     gene_boot <- gene$Clone()
     gene_boot$RowReorder(which(rownames(gene_boot) %in% sig_assocs[,gene]))
     genepos <- genepos[genepos[,1] %in% sig_assocs[,gene], ]
-  
+
     # If we don't need to run the bootstrap analysis for all cis-SNPs, we
     # can filter to just the significant eSNPs
     if (local_correction %in% c("bonferroni", "none")) {
@@ -474,27 +474,27 @@ BootstrapQTL <- function(
     } else {
       tests_per_gene <- NULL
     }
-    
+
     if (!is.null(tests_per_gene)) {
       snps_boot <- snps$Clone()
       snps_boot$RowReorder(which(rownames(snps_boot) %in% sig_assocs[,snps]))
     } else {
       snps_boot <- snps
     }
-  
+
     snpspos <- snpspos[snpspos[,1] %in% sig_assocs[,snps],]
-  
+
     # Make sure only necessary objects are ported to each worker
     boot_objs <-  c("cvrt", "snps_boot", "gene_boot", "snpspos",
                     "genepos", "bootstrap_file_directory", "sig_pairs",
                     "tests_per_gene", "local_correction", "eSNP_threshold",
                     "errorCovariance", "cisDist", "useModel")
     other_objs <- ls()[!(ls() %in% boot_objs)]
-  
+
     ##--------------------------------------------------------------------
     ## Run the bootstrap procedure
     ##--------------------------------------------------------------------
-  
+
     cat("Running bootstrap procedure for", n_bootstraps, "bootstraps on", getDoParWorkers(), "cores.\n")
     # Run MatrixEQTL in each bootstrap detection group and estimation
     # group
@@ -510,12 +510,12 @@ BootstrapQTL <- function(
         # Silently load packages on parallel workers
         suppressMessages(requireNamespace("data.table"))
         suppressMessages(requireNamespace("MatrixEQTL"))
-  
+
         n_samples <- ncol(snps_boot)
         id_detection <- sample(seq_len(n_samples), n_samples, replace = TRUE)
         id_estimation <- setdiff(seq_len(n_samples), id_detection)
-  
-  
+
+
         # Copy and subset the gene and snp data for the bootstrap
         # detection group
         gene_detection <- gene_boot$Clone()
@@ -524,14 +524,14 @@ BootstrapQTL <- function(
         snps_detection$ColumnSubsample(id_detection)
         cvrt_detection <- cvrt$Clone()
         cvrt_detection$ColumnSubsample(id_detection)
-  
+
         # File to save detection group cis associations
         if (is.null(bootstrap_file_directory)) {
           detection_file <- NULL
         } else {
           detection_file <- file.path(bootstrap_file_directory, paste0("detection_", id_boot, ".txt"))
         }
-  
+
         # Run MatrixEQTL on the detection group
         # Revisit to remove unneccesary parameters
         eQTL_detection <- Matrix_eQTL_main(
@@ -564,13 +564,13 @@ BootstrapQTL <- function(
         detection_sig_assocs <- detection_sig_assocs[, list(gene, snps, detection_beta=beta)]
         # Add identifier columns
         detection_sig_assocs[, bootstrap := id_boot]
-  
+
         # If there are no significant associations in this bootstrap we
         # can move to the next one
         if(nrow(detection_sig_assocs) == 0) {
           return(NULL)
         }
-  
+
         ##----------------------------------------------------------------
         ## Estimation group effect size re-estimation
         ##----------------------------------------------------------------
@@ -584,14 +584,14 @@ BootstrapQTL <- function(
           snps_estimation$ColumnSubsample(id_estimation)
           cvrt_estimation <- cvrt$Clone()
           cvrt_estimation$ColumnSubsample(id_estimation)
-  
+
           # File to save estimation group associations
           if (is.null(bootstrap_file_directory)) {
             estimation_file <- NULL
           } else {
             estimation_file <- file.path(bootstrap_file_directory, paste0("detection_", id_boot, ".txt"))
           }
-  
+
           # Run MatrixEQTl in the estimation group
           eQTL_estimation <- Matrix_eQTL_main(
             snps = snps_estimation,
@@ -612,7 +612,7 @@ BootstrapQTL <- function(
           )
           # Load the table of all cis-assocations
           estimation_cis_assocs <- get_cis_assocs(eQTL_estimation, estimation_file)
-  
+
           # Create final table to return
           sig_boot_assocs <- merge(detection_sig_assocs,
                                    estimation_cis_assocs[, list(gene, snps, estimation_beta=beta)],
@@ -625,7 +625,7 @@ BootstrapQTL <- function(
         return(data.table(bootstrap=id_boot, error=e$message, error_type="detection"))
       })
     }
-  
+
     ##--------------------------------------------------------------------
     ## Collate bootstrap errors
     ##--------------------------------------------------------------------
@@ -639,22 +639,22 @@ BootstrapQTL <- function(
       }
     }
     boot_eGenes <- boot_eGenes[is.na(error)]
-  
+
     ##--------------------------------------------------------------------
     ## Remove effect of the winners curse based on bootstrap estimates
     ##--------------------------------------------------------------------
-  
+
     cat("Removing winner's curse...\n")
     # Calculate the effect of the winner's curse. If effect sizes have been
     # estimated using the top bootstrap eSNP then we need to account for the
     # fact that different eSNPs with anti-correlated minor allele frequencies
     # may have been the top SNP at each bootstrap
     sig_assocs  <- correct_winners_curse(boot_eGenes, sig_assocs, correction_type)
-    
+
     ##--------------------------------------------------------------------
     ##  Prepare table to be returned
     ##--------------------------------------------------------------------
-    
+
     # Relabel columns
     sig_assocs <- sig_assocs[,list(eGene=gene, eSNPs=snps, statistic, nominal_beta=beta,
                                    corrected_beta, winners_curse, correction_boots,

@@ -51,7 +51,7 @@ test_that("Run BootstrapQTL", {
   unlink(outdir, recursive=TRUE)
 
   eQTLs <- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=10, n_cores=2)
-  
+
   eQTLs <- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=0)
 })
 
