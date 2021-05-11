@@ -350,10 +350,10 @@ BootstrapQTL <- function(
   }
 
   # Force cis-eQTL analysis
-  if (missing(snpspos) || is.na(snpspos) || is.null(snpspos)) {
+  if (missing(snpspos) || is.null(snpspos) || (length(snpspos) == 1 && is.na(snpspos))) {
     stop("'snpspos' must be provided")
   }
-  if (missing(genepos) || is.na(genepos) || is.null(genepos)) {
+  if (missing(genepos) || is.null(genepos) || (length(genepos) == 1 && is.na(genepos))) {
     stop("'genepos' must be provided")
   }
 
