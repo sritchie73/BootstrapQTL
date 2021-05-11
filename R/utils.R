@@ -110,15 +110,6 @@ setupParallel <- function(nCores, verbose, reporterCore) {
     if (verbose) cat("Registering 1 core for bootstrap procedure.\n")
   }
 
-  # Suppress annoying foreach warning generated when using %dopar% and running
-  # in serial
-  if (nCores == 1) {
-    suppressWarnings({
-      ii <- 0 # suppress R CMD check note
-      foreach(ii = 1:2) %dopar% { ii }
-    })
-  }
-
   return(list(nCores=nCores, cluster=cl, predef=predef))
 }
 

@@ -408,10 +408,14 @@ BootstrapQTL <- function(
   }
 
   # Set up parallel computing environment
-  par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
-  on.exit({
-    cleanupCluster(par_setup$cluster, par_setup$predef)
-  }, add = TRUE)
+  if (n_cores > 1) {
+    par_setup <- setupParallel(n_cores, verbose=TRUE, reporterCore=FALSE)
+    on.exit({
+      cleanupCluster(par_setup$cluster, par_setup$predef)
+    }, add = TRUE)
+  } else {
+    foreach::registerDoSEQ() # prevents %dopar% from throwing warning
+  }
 
   ##--------------------------------------------------------------------
   ## Perform QTL mapping and nominal effect size estimation
