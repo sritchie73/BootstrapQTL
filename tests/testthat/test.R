@@ -56,9 +56,6 @@ test_that("Run BootstrapQTL", {
     }
   })
 
-  unlink(outfile)
-  unlink(outdir, recursive=TRUE)
-
   eQTLs <- BootstrapQTL(snps, gene, snpspos, genepos, cvrt, n_bootstraps=0)
 
   tryCatch({
@@ -72,9 +69,11 @@ test_that("Run BootstrapQTL", {
   }, error=function(e) {
     # Sometimes parallel::makeCluster() fails - problematic when occurs on CRAN servers
     if (!grepl("cannot open the connection", e)) {
-      error(e)
+      stop(e)
     }
   })
+
+  unlink(list.files(path=tempdir()))
 })
 
 
