@@ -1,7 +1,7 @@
 Package: BootstrapQTL
 Type: Package
 Title: Bootstrap cis-QTL Method that Corrects for the Winner's Curse
-Version: 1.0.3
+Version: 1.0.4
 Author: Qin Qin Huang [aut],
   Scott Ritchie [aut, cre]
 Maintainer: Scott Ritchie <sritchie73@gmail.com>
