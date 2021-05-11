@@ -5,7 +5,7 @@ Version: 1.0.4
 Author: Qin Qin Huang [aut],
   Scott Ritchie [aut, cre]
 Maintainer: Scott Ritchie <sritchie73@gmail.com>
-BugReports: https://github.com/InouyeLab/bootstrapQTL/issues
+BugReports: https://github.com/sritchie73/bootstrapQTL/issues
 Description: Identifies genome-related molecular traits with significant 
   evidence of genetic regulation and performs a bootstrap procedure to 
   correct estimated effect sizes for over-estimation present in cis-QTL
