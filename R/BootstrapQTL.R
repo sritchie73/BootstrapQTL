@@ -499,8 +499,7 @@ BootstrapQTL <- function(
     # Run MatrixEQTL in each bootstrap detection group and estimation
     # group
     boot_eGenes <- foreach(id_boot = seq_len(n_bootstraps),
-                           .inorder = FALSE,
-                           .export = boot_objs, .noexport=other_objs,
+                           .inorder = FALSE, .noexport=other_objs,
                            .init = data.table(error=character(0), error_type=character(0)),
                            .combine = rbind_dt  # rbind with FILL = TRUE as default
     ) %dopar% {
