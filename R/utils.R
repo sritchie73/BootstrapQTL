@@ -133,7 +133,8 @@ cleanupCluster <- function(cluster, predef) {
       parallel::stopCluster(cluster)
       cl <- parallel::makeCluster(1, type="PSOCK")
       doParallel::registerDoParallel(cl)
-      closeAllConnections()
+      parallel::stopCluster(cl)
+      doParallel::stopImplicitCluster()
     }
   } else if (!predef) {
     if (pkgReqCheck("doMC")) {
